@@ -113,6 +113,9 @@ axes
 </div>
 <script type="text/javascript">
 var BASE = "http://localhost:2718";
+if (window.location.href.indexOf("ssi-server4") != -1) {
+	BASE = "http://ssi-server4.stanford.edu:443";
+}
 var sidebar = document.getElementById("sidebar");
 var frames = document.getElementById("frames");
 var head1 = document.getElementById("head1");
@@ -230,8 +233,9 @@ function remove_key(k) {
 
 function render_sidebar() {
 	sidebar.innerHTML = "";
-	var i = 0;
-	for (var key in env.keys) {
+	var sorted = Object.keys(env.keys).sort();
+	for (var i=0; i<sorted.length; i++) {
+		var key = sorted[i];
 		var li = document.createElement("li");
 		li.style.display="block";
 		var sel = false; //Math.random() > 0.7;
@@ -256,7 +260,6 @@ function render_sidebar() {
 				remove_key(key);
 			}
 		});
-		i += 1;
 	}
 }
 

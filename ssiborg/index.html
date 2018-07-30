@@ -4,6 +4,7 @@
 <title>ssiborg</title>
 <script type="text/javascript" src="jquery.min.js"></script>
 <script type="text/javascript" src="jquery.flot.min.js"></script>
+<script type="text/javascript" src="jquery.flot.selection.min.js"></script>
 <style type="text/css">
 * {
 	font-family:monospace;
@@ -47,6 +48,27 @@ html, body {
 .color-4 {
 	background:#00796b;
 }
+.nav-btns {
+	margin:5px;
+	display:inline-block;
+}
+.nav-btns button {
+	font-size:200%;
+	cursor:pointer;
+	background:#37474f;
+	color:white;
+	margin:0;
+	border:1px solid #263238;
+}
+.nav-btns button:last-child {
+	border-left:none;
+}
+.nav-btns button:first-child {
+	border-left:1px solid #263238 !important;
+}
+.nav-btns button:hover {
+	background:#263238;
+}
 </style>
 </head>
 <body>
@@ -55,7 +77,7 @@ html, body {
 <div style="flex:0;max-height:100%;">
 <div style="height:100%; display:flex; flex-direction:column;width:24em;">
 <div style="padding:5px;padding-right:0px;min-height:3.5em;max-height:3.5em;flex:0;" id="head1" class="color-1">
-<input style="width:100%;font-size:150%;background:white;border:1px solid black; padding:5px;" placeholder="Filter">
+<input style="width:100%;font-size:150%;background:white;border:1px solid black; padding:5px;" placeholder="Filter" id="filter">
 </div>
 
 <div style="flex:1 1 auto;min-height:0px;overflow-y:auto;" class="color-3">
@@ -81,7 +103,7 @@ ssiborg
 
 <div style="display:flex; flex-direction: column;height:calc(100% - 3.5em);"> <!-- or row -->
 <div style="flex:0;flex-grow:1;overflow:hidden;" id="plot-area">
-	<div id="plot-parent" style="">
+	<div id="plot-parent" style="text-align:center;">
 	<div id="plot" style="text-align:center;height:400px; width:600px;background:#a2adb2;margin:0 auto;" class="color-3">
 <pre style="font-size:90%;">
 
@@ -104,7 +126,12 @@ A complete abomination
 	</div>
 </div>
 <div style="flex:1;padding:50px;text-align:center;flex-grow:0;">
-axes
+	<div class="nav-btns">
+		<button>&#8962;</button>
+	</div>
+	<div class="nav-btns">
+		<button>&larr;</button><button>&rarr;</button>
+	</div>
 </div>
 </div>
 
@@ -118,6 +145,7 @@ if (window.location.href.indexOf("ssi-server4") != -1) {
 }
 var sidebar = document.getElementById("sidebar");
 var frames = document.getElementById("frames");
+var filter = document.getElementById("filter");
 var head1 = document.getElementById("head1");
 var head2 = document.getElementById("head2");
 var plot = document.getElementById("plot");
@@ -126,25 +154,27 @@ var plotP = document.getElementById("plot-parent");
 var plotA = document.getElementById("plot-area");
 var info = document.getElementById("info");
 
-var data = [
-	/*{ data: [[0,0],[1,1]], label: "", xaxis: 1 },
+/*var data = [
+	{ data: [[0,0],[1,1]], label: "", xaxis: 1 },
 	{ data: [[0.1,1.1], [1.1, 0.9]], label: "", yaxis: 2 },
 	{ data: [[0.1,1.1], [1.1, 0.9]], label: "", yaxis: 2 },
-	{ data: [[0.1,1.1], [1.1, 0.9]], label: "", yaxis: 3 }*/
-];
+	{ data: [[0.1,1.1], [1.1, 0.9]], label: "", yaxis: 3 }
+];*/
 
-var env = {keys: {}, indices: {}, frames: [], plots: [], frame: null, selection: [0, -1], points: 200};
-var cache = {indices: {}, keys: {}};
-
-var opts = {
+var env = {keys: {}, indices: {}, frames: [], plots: [], frame: null, selection: [0, -1], points: 200, filter: null};
+var flot = {data: [], opts: {
 	xaxes: [ {  } ],
 	yaxes: [ {  }, {
 		// align if we are to the right
 		alignTicksWithAxis: 1,
 		position: "right",
 	} ],
-	legend: {show: true}
-};
+	legend: {show: true},
+	selection: { mode: "xy" }
+}, plot: null};
+
+var cache = {indices: {}, keys: {}};
+
 
 function clear() {
 	sidebar.innerHTML = "";
@@ -209,7 +239,7 @@ function add_key(k) {
 			for (var i=0; i<dcache.length; i++) {
 				lst.push([icache.data[i], dcache[i]]);
 			}
-			data.push({data: lst, label: k});
+			flot.data.push({data: lst, label: k});
 			env.plots.push({key: k});
 			mkplot();
 		}
@@ -224,7 +254,7 @@ function remove_key(k) {
 	for (var i=0; i<env.plots.length; i++) {
 		if (env.plots[i].key == k) {
 			env.plots.splice(i, 1);
-			data.splice(i, 1);
+			flot.data.splice(i, 1);
 			mkplot();
 			break;
 		}
@@ -236,6 +266,7 @@ function render_sidebar() {
 	var sorted = Object.keys(env.keys).sort();
 	for (var i=0; i<sorted.length; i++) {
 		var key = sorted[i];
+		if (env.filter && !env.filter.test(key)) continue;
 		var li = document.createElement("li");
 		li.style.display="block";
 		var sel = false; //Math.random() > 0.7;
@@ -288,16 +319,23 @@ function select(v) {
 			var t = keys[i][1];
 			var w = keys[i][2];
 			var s = ["Int","Float"][t] + {1: "8", 2: "16", 4: "32", 8: "64"}[w];
-			env.keys[keys[i][0]] = {index: keys[i][3], type: s};
+			env.keys[keys[i][0]] = {index: keys[i][3], type: s, selected: false};
 		}
 		render_sidebar();
 	});	
 }
 
 function mkplot() {
-	if (data.length != 0) {
+	if (flot.data.length != 0) {
 		plot.innerHTML = "";
-		$.plot("#plot", data, opts);
+		flot.plot = $.plot("#plot", flot.data, flot.opts);
+		$("#plot").unbind("plotselected").bind("plotselected", function (event, ranges) {
+			flot.opts.xaxes[0].min = ranges.xaxis.from;
+			flot.opts.xaxes[0].max = ranges.xaxis.to;
+			mkplot();
+			console.log("selected", ranges);
+		});
+
 	} else
 		plot.innerHTML = banner;
 }
@@ -317,7 +355,7 @@ function resize() {
 		console.log(h,w)
 		plot.style.width = ""+w+"px";
 		plot.style.height = ""+h+"px";
-		plot.style.marginTop = "" + ((plotA.clientHeight-h)/2.) + "px";
+		plotP.style.paddingTop = "" + ((plotA.clientHeight-h)/2.) + "px";
 		mkplot();
 	}, 100);
 }
@@ -335,6 +373,11 @@ $.getJSON(BASE+"/frames", function (fr) {
 	select(fr[0]);
 });
 
+filter.addEventListener("keyup", function () {
+	if (this.value.length == 0) env.filter = null;
+	else env.filter = new RegExp(this.value, 'i');
+	render_sidebar();
+});
 
 /*for (var i=0; i<60; i++) {
 	add_to_sidebar("lol"+i);

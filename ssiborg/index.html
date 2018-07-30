@@ -1,0 +1,341 @@
+<!doctype html>
+<html>
+<head>
+<title>ssiborg</title>
+<script type="text/javascript" src="jquery.min.js"></script>
+<script type="text/javascript" src="jquery.flot.min.js"></script>
+<style type="text/css">
+* {
+	font-family:monospace;
+	box-sizing:border-box;
+}
+html, body {
+	margin:0;
+	padding:0;
+	width:100%;
+	height:100%;
+}
+
+#lay {
+	border-collapse:collapse;
+}
+#lay td {
+	padding:0;
+	margin:0;
+}
+#sidebar {
+	margin:0;
+	padding:0;
+}
+#sidebar li {
+	list-style-type: none;
+}
+#sidebar li:hover {
+	background:rgba(0,0,0,.2);
+}
+.color-1 {
+	background:#263238;
+	color:white;
+}
+.color-2 {
+	background:#455a64;
+}
+.color-3 {
+	background:#37474f;
+	color:white;
+}
+.color-4 {
+	background:#00796b;
+}
+</style>
+</head>
+<body>
+<!-- that's right, it's 2018 and I'M USING TABLES FOR LAYOUT -->
+<div style="display:flex; flex-direction:row;height:100%;">
+<div style="flex:0;max-height:100%;">
+<div style="height:100%; display:flex; flex-direction:column;width:24em;">
+<div style="padding:5px;padding-right:0px;min-height:3.5em;max-height:3.5em;flex:0;" id="head1" class="color-1">
+<input style="width:100%;font-size:150%;background:white;border:1px solid black; padding:5px;" placeholder="Filter">
+</div>
+
+<div style="flex:1 1 auto;min-height:0px;overflow-y:auto;" class="color-3">
+<ul id="sidebar"></ul>
+</div>
+
+</div>
+
+</div>
+
+<div style="flex:1;margin:0; padding:0;" class="color-2">
+
+<div style="margin:0; padding:0; padding-left:10px; height:3.5em;line-height:3.5em;vertical-align:top;" id="head2" class="color-1">
+<div style="font-weight:bold;font-size:150%;">
+ssiborg
+<select style="font-size:100%;margin-left:10px;" id="frames">
+<option>Loading...</option>
+</select>
+<span style="text-align:right;font-size:60%;font-weight:normal;float:right;padding-right:10px;" id="info"></span>
+</div>
+
+</div>
+
+<div style="display:flex; flex-direction: column;height:calc(100% - 3.5em);"> <!-- or row -->
+<div style="flex:0;flex-grow:1;overflow:hidden;" id="plot-area">
+	<div id="plot-parent" style="">
+	<div id="plot" style="text-align:center;height:400px; width:600px;background:#a2adb2;margin:0 auto;" class="color-3">
+<pre style="font-size:90%;">
+
+
+
+   ___    ___    ___   _                     __ _  
+  / __|  / __|  |_ _| | |__    ___     _ _  / _` | 
+  \__ \  \__ \   | |  | '_ \  / _ \   | '_| \__, | 
+  |___/  |___/  |___| |_.__/  \___/  _|_|_  |___/  
+_|"""""_|"""""_|"""""_|"""""_|"""""_|"""""_|"""""| 
+"`-0-0-"`-0-0-"`-0-0-"`-0-0-"`-0-0-"`-0-0-"`-0-0-' 
+
+
+</pre>
+Powered by Xandri
+<br>
+<br>
+A complete abomination
+</div>
+	</div>
+</div>
+<div style="flex:1;padding:50px;text-align:center;flex-grow:0;">
+axes
+</div>
+</div>
+
+</div>
+
+</div>
+<script type="text/javascript">
+var BASE = "http://localhost:2718";
+var sidebar = document.getElementById("sidebar");
+var frames = document.getElementById("frames");
+var head1 = document.getElementById("head1");
+var head2 = document.getElementById("head2");
+var plot = document.getElementById("plot");
+var banner = plot.innerHTML;
+var plotP = document.getElementById("plot-parent");
+var plotA = document.getElementById("plot-area");
+var info = document.getElementById("info");
+
+var data = [
+	/*{ data: [[0,0],[1,1]], label: "", xaxis: 1 },
+	{ data: [[0.1,1.1], [1.1, 0.9]], label: "", yaxis: 2 },
+	{ data: [[0.1,1.1], [1.1, 0.9]], label: "", yaxis: 2 },
+	{ data: [[0.1,1.1], [1.1, 0.9]], label: "", yaxis: 3 }*/
+];
+
+var env = {keys: {}, indices: {}, frames: [], plots: [], frame: null, selection: [0, -1], points: 200};
+var cache = {indices: {}, keys: {}};
+
+var opts = {
+	xaxes: [ {  } ],
+	yaxes: [ {  }, {
+		// align if we are to the right
+		alignTicksWithAxis: 1,
+		position: "right",
+	} ],
+	legend: {show: true}
+};
+
+function clear() {
+	sidebar.innerHTML = "";
+	num = 0;
+}
+
+function load_index(idx, ret) {
+	console.log("loading index", idx);
+	var xhr = new XMLHttpRequest();
+	xhr.open('GET', BASE + '/index/'+env.frame+'/'+idx+'/'+env.selection[0]+'/'+env.selection[1]+'/'+env.points, true);
+	xhr.responseType = 'arraybuffer';
+
+	var st = Date.now();
+	xhr.onload = function(e) {
+		if (this.status == 200) {
+			update_latency(Date.now()-st);
+			var buf = xhr.response;
+			var type = eval("Uint"+(8*env.indices[idx].width)+"Array");
+			var arr = new type(buf);
+			var meta = JSON.parse(xhr.getResponseHeader('Xandri-Data'));
+			cache.indices[idx] = {data: arr, zoom: meta[0], low: meta[1], high: meta[2]};
+			ret();
+		}
+	};
+
+	xhr.send();
+}
+
+function load_key(k, ret) {
+	console.log("loading key", k);
+	var key = env.keys[k];
+	var idx = cache.indices[key.index];
+	var xhr = new XMLHttpRequest();
+	xhr.open('GET', BASE + '/key/'+env.frame+'/'+k+'/'+idx.zoom+'/'+idx.low+'/'+idx.high, true);
+	xhr.responseType = 'arraybuffer';
+
+	var st = Date.now();
+	xhr.onload = function(e) {
+		if (this.status == 200) {
+			update_latency(Date.now()-st);
+			var buf = xhr.response;
+			var type = eval(key.type+"Array");
+			var arr = new type(buf);
+			cache.keys[k] = arr;
+			ret();
+		}
+	};
+
+	xhr.send();
+}
+
+function add_key(k) {
+	var key = env.keys[k];
+	function _add_key() {
+		var icache = cache.indices[key.index];
+		if (env.selection[1] == -1) {
+			env.selection = [icache.data[icache.low], icache.data[icache.high]];
+		}
+		function __add_key() {
+			var lst = [];
+			var dcache = cache.keys[k];
+			for (var i=0; i<dcache.length; i++) {
+				lst.push([icache.data[i], dcache[i]]);
+			}
+			data.push({data: lst, label: k});
+			env.plots.push({key: k});
+			mkplot();
+		}
+		if (!cache.keys[k]) load_key(k, __add_key);
+		else __add_key();
+	}
+	if (!cache.indices[key.index]) load_index(key.index, _add_key);
+	else _add_key();
+}
+
+function remove_key(k) {
+	for (var i=0; i<env.plots.length; i++) {
+		if (env.plots[i].key == k) {
+			env.plots.splice(i, 1);
+			data.splice(i, 1);
+			mkplot();
+			break;
+		}
+	}
+}
+
+function render_sidebar() {
+	sidebar.innerHTML = "";
+	var i = 0;
+	for (var key in env.keys) {
+		var li = document.createElement("li");
+		li.style.display="block";
+		var sel = false; //Math.random() > 0.7;
+		var str = '<div style="display:flex;flex-direction:row;width:100%;"'+(sel?' class="color-4"':'')+'><div style="flex:0;"><input style="margin-top:6px;" id="chk-'+i+'" type="checkbox" data-key="'+key+'"></div>';
+		str += '<div style="flex:1;overflow-x:hidden;display:block;"><label style="text-overflow:ellipsis;white-space:nowrap;width:100%;padding:5px;display:block;" for="chk-'+i+'">'+key+'</label></div>';
+			/*str += '<div style="flex:0; min-width:2em;';
+			if (sel) {
+				if (Math.random() > 0.5) {
+					c = 'darkred';
+				} else c = 'darkblue';
+				str += 'background:'+c+';';
+			}
+			str += '"></div>'*/
+		str += '</div>';
+		li.innerHTML = str;
+		sidebar.appendChild(li);
+		document.getElementById("chk-"+i).addEventListener('change', function () {
+			var key = this.getAttribute('data-key');
+			if (this.checked) {
+				add_key(key);
+			} else {
+				remove_key(key);
+			}
+		});
+		i += 1;
+	}
+}
+
+function render_frames(list) {
+	var str = '';//<option>Select</option>';
+	for (var i=0; i<env.frames.length; i++) {
+		str += '<option>'+env.frames[i]+'</option>';
+	}
+	frames.innerHTML = str;
+}
+function update_latency(lat) {
+	info.innerHTML = 'Latency: ' + lat + ' ms';	
+}
+function select(v) {
+	env.frame = v;
+	var st = Date.now();
+	$.getJSON(BASE+'/keys/'+v, function (data) {
+		update_latency(Date.now()-st);
+		env.indices = {};
+		for (var i=0; i<data.indices.length; i++) {
+			env.indices[data.indices[i].name] = {width: data.indices[i].width};
+		}
+		var keys = data.keys;
+		env.keys = {};
+		for (var i=0; i<keys.length; i++) {
+			var t = keys[i][1];
+			var w = keys[i][2];
+			var s = ["Int","Float"][t] + {1: "8", 2: "16", 4: "32", 8: "64"}[w];
+			env.keys[keys[i][0]] = {index: keys[i][3], type: s};
+		}
+		render_sidebar();
+	});	
+}
+
+function mkplot() {
+	if (data.length != 0) {
+		plot.innerHTML = "";
+		$.plot("#plot", data, opts);
+	} else
+		plot.innerHTML = banner;
+}
+
+var clearint;
+
+function resize() {
+	console.log("onresize");
+	plot.innerHTML = banner;
+	plot.style.width = "0px";
+	plot.style.height = "0px";
+	clearTimeout(clearint);
+	clearint = setTimeout(function() {
+		var h = Math.floor(plotA.clientHeight*0.9);
+		var w = Math.floor(plotA.clientWidth*0.8);
+		env.points = w;
+		console.log(h,w)
+		plot.style.width = ""+w+"px";
+		plot.style.height = ""+h+"px";
+		plot.style.marginTop = "" + ((plotA.clientHeight-h)/2.) + "px";
+		mkplot();
+	}, 100);
+}
+
+clear();
+resize();
+
+window.addEventListener('resize', resize);
+
+var st = Date.now();
+$.getJSON(BASE+"/frames", function (fr) {
+	update_latency(Date.now()-st);
+	env.frames = fr;
+	render_frames();
+	select(fr[0]);
+});
+
+
+/*for (var i=0; i<60; i++) {
+	add_to_sidebar("lol"+i);
+}*/
+</script>
+</body>
+</html>

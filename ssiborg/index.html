@@ -53,6 +53,8 @@ html, body {
 	display:inline-block;
 }
 .nav-btns button {
+	height:1.5em;
+	vertical-align:middle;
 	font-size:200%;
 	cursor:pointer;
 	background:#37474f;
@@ -74,7 +76,11 @@ html, body {
 }
 #links-setup a {
 	color:white;
-	text-underline:none;
+	text-decoration:none;
+	font-weight:normal;
+}
+#links-setup a:hover {
+	text-decoration:underline;
 }
 </style>
 </head>
@@ -103,7 +109,7 @@ ssiborg
 <select style="font-size:100%;margin-left:10px;" id="frames">
 <option>Loading...</option>
 </select>
-<div style="font-size:66.6%;" id="links-setup">
+<div style="font-size:66.6%;font-weight:bold;" id="links-setup">
 <a href="" id="btn-config">Config</a> &middot;
 <a href="" id="btn-help">Help</a>
 </div>
@@ -137,17 +143,63 @@ _|"""""_|"""""_|"""""_|"""""_|"""""_|"""""_|"""""|
 Powered by Xandri
 <br>
 <br>
-A complete abomination
+Hailed as the new benchmark for shitty code
 </div>
 	</div>
 </div>
-<div style="flex:1;padding:50px;text-align:center;flex-grow:0;">
+<div style="flex:1;padding:10px;padding-top:5px;text-align:center;flex-grow:0;">
 	<div class="nav-btns">
 		<button>&#8962;</button>
 	</div>
 	<div class="nav-btns">
 		<button>&larr;</button><button>&rarr;</button>
 	</div>
+
+	<style>
+		#axes {
+			margin:0 auto;
+			text-align:left;
+			border-spacing:0 5px;
+		}
+		.axis {
+			padding:3px 0px;
+			max-width:90%;
+		}
+		.axis-label {
+			background:#263238;
+			padding:5px;
+			width:10em;
+			max-width:10em;
+			text-align:left;
+			color:white;
+			font-weight:bold;
+		}
+		.axis-key {
+			display:inline-block;
+			background:#37474f;
+			margin:2px;
+			color:white;
+			line-height:100%;
+			vertical-align:middle;
+		}
+		.axis-keys {
+			border:1px solid #263238;
+			min-width:10em;
+		}
+		.axis-opts {
+			float:right;
+			cursor:pointer;
+			padding:5px;
+			background:#a2adb2;
+			color:black;
+		}
+		.axis-name {
+			float:left;
+			padding:5px;
+		}
+	</style>
+
+	<table id="axes"> </table>
 </div>
 </div>
 
@@ -170,6 +222,9 @@ var plotP = document.getElementById("plot-parent");
 var plotA = document.getElementById("plot-area");
 var info = document.getElementById("info");
 var info2 = document.getElementById("info2");
+var btnhelp = document.getElementById("btn-help");
+var btnconfig = document.getElementById("btn-config");
+var axes = document.getElementById("axes");
 var latency = {max: 0, sum: 0, num: 0};
 
 /*var data = [
@@ -179,17 +234,19 @@ var latency = {max: 0, sum: 0, num: 0};
 	{ data: [[0.1,1.1], [1.1, 0.9]], label: "", yaxis: 3 }
 ];*/
 
-var env = {keys: {}, indices: {}, frames: [], plots: [], frame: null, selection: [0, -1], points: 200, filter: null};
+var env = {keys: {}, indices: {}, frames: [], plots: [], frame: null, selection: [0, -1], points: 200, filter: null, axes: [{name: "Axis 1", position: "left"}]};
 var flot = {data: [], opts: {
 	xaxes: [ {  } ],
-	yaxes: [ {  }, {
+	yaxes: [ { alignTicksWithAxis: 1 } ],
+	legend: {show: false},
+	selection: { mode: "xy" }
+}, plot: null};
+
+/*, {
 		// align if we are to the right
 		alignTicksWithAxis: 1,
 		position: "right",
-	} ],
-	legend: {show: true},
-	selection: { mode: "xy" }
-}, plot: null};
+	}*/
 
 var cache = {indices: {}, keys: {}};
 
@@ -329,11 +386,14 @@ function add_key(k) {
 			var lst = [];
 			var dcache = cache.keys[k];
 			for (var i=0; i<dcache.length; i++) {
-				lst.push([icache.data[i], dcache[i]]);
+				var e = icache.data[i];
+				if (e >= env.selection[0] && e <= env.selection[1])
+					lst.push([e, dcache[i]]);
 			}
-			flot.data.push({data: lst, label: k});
-			env.plots.push({key: k, index: key.index});
+			flot.data.push({data: lst, label: k, yaxis: env.axes.length});
+			env.plots.push({key: k, index: key.index, axis: env.axes.length});
 			mkplot();
+			render_axes();
 		}
 		if (!cache.keys[k]) load_key(k, __add_key);
 		else __add_key();
@@ -351,6 +411,7 @@ function remove_key(k) {
 			break;
 		}
 	}
+	render_axes();
 }
 
 function render_sidebar() {
@@ -398,6 +459,88 @@ function render_frames(list) {
 	frames.innerHTML = str;
 }
 
+function render_axes() {
+	var s = "";
+	axes.innerHTML = s;
+
+	var vars = [];
+	for (var k=0; k<env.axes.length; k++) vars.push([]);
+	for (var i=0; i<env.plots.length; i++) {
+		vars[env.plots[i].axis-1].push(i);
+	}
+
+	for (var i=0; i<env.axes.length; i++) {
+		var ax = env.axes[i];
+
+		var tr = document.createElement("tr");
+		tr.className = "axis";
+
+		var td = document.createElement("td");
+		td.className = "axis-label";
+		var name = document.createElement("span");
+		name.className = "axis-name";
+		name.appendChild(document.createTextNode(ax.name));
+		td.appendChild(name);
+		var opts = document.createElement("span");
+		opts.className = "axis-opts";
+		opts.innerHTML = "&#9650;";
+		opts.addEventListener("click", (function (name) { return function () {
+			alert("options for "+name);
+		}})(ax.name));
+		td.appendChild(opts);
+		tr.appendChild(td);
+
+		var td = document.createElement("td");
+		td.className = "axis-keys";
+		for (var j=0; j<vars[i].length; j++) {
+			var ki = vars[i][j];
+			var k = env.plots[ki].key;
+			var div = document.createElement("div");
+			div.className = "axis-key";
+
+			var col = document.createElement("span");
+			col.style.display = "inline";
+			col.style.minWidth = "10px";
+			col.style.width = "10px";
+			col.style.padding = "5px 8px";
+			col.style.background = env.plots[ki].color;
+			console.log(env.plots[ki].color);
+			div.appendChild(col);
+
+			var txt = document.createElement("span");
+			txt.style.padding = "5px";
+			txt.style.display = "inline-block";
+			txt.appendChild(document.createTextNode(k));
+			div.appendChild(txt);
+
+			td.appendChild(div);
+		}
+		tr.appendChild(td);
+
+		axes.appendChild(tr);
+	}
+	var tr = document.createElement("tr");
+	tr.className = "axis";
+	var td = document.createElement("td");
+	td.className = "axis-label";
+	td.style.cursor = "pointer";
+	var span = document.createElement("span");
+	span.className = "axis-name";
+	span.appendChild(document.createTextNode("New axis"));
+	td.addEventListener('click', new_axis);
+	td.appendChild(span);
+	tr.appendChild(td);
+	axes.appendChild(tr);
+}
+
+function new_axis() {
+	env.axes.push({name: "Axis "+(env.axes.length+1), position: "left"});
+	flot.opts.yaxes.push({alignTicksWithAxis: 1});
+	render_axes();
+}
+
+render_axes();
+
 function update_latency(lat) {
 	latency.sum += lat;
 	latency.num++;
@@ -442,6 +585,10 @@ function mkplot() {
 			mkplot();
 			console.log("selected", ranges);
 		});
+		var data = flot.plot.getData();
+		for (var i=0; i<data.length; i++) {
+			env.plots[i].color = data[i].color;
+		}
 
 	} else
 		plot.innerHTML = banner;
@@ -456,8 +603,8 @@ function resize() {
 	plot.style.height = "0px";
 	clearTimeout(clearint);
 	clearint = setTimeout(function() {
-		var h = Math.floor(plotA.clientHeight*0.9);
-		var w = Math.floor(plotA.clientWidth*0.8);
+		var h = plotA.clientHeight;
+		var w = plotA.clientWidth;
 		env.points = w;
 		console.log(h,w)
 		plot.style.width = ""+w+"px";
@@ -484,6 +631,16 @@ filter.addEventListener("keyup", function () {
 	if (this.value.length == 0) env.filter = null;
 	else env.filter = new RegExp(this.value, 'i');
 	render_sidebar();
+});
+
+btnhelp.addEventListener("click", function (e) {
+	e.preventDefault();
+	alert("I appreciate your faith. But no, no help yet.");
+});
+
+btnconfig.addEventListener("click", function (e) {
+	e.preventDefault();
+	alert("lol");
 });
 
 /*for (var i=0; i<60; i++) {

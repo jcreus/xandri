@@ -226,6 +226,80 @@ function load_key(k, ret) {
 	xhr.send();
 }
 
+function index_is_valid(idx) {
+	var icache = cache.indices[idx];
+	if (icache.zoom == 0) return true;
+	var num = 0;
+	for (var i=0; i<icache.data.length; i++) {
+		var e = icache.data[i];
+		if (e >= env.selection[0] && e <= env.selection[1]) num++;
+	}
+	return num >= env.points;
+}
+
+function update_zoom() {
+	var indices = {};
+	var num_ok = 0;
+	for (var i=0; i<env.plots.length; i++) {
+		var plot = env.plots[i];
+		if (indices[plot.index] == false) {
+			num_ok++;
+			continue;
+		}
+		if (!indices[plot.index]) {
+			var valid = index_is_valid(plot.index);
+			if (valid) {
+				indices[plot.index] = false;
+				num_ok++;
+				continue;
+			}
+			indices[plot.index] = [];
+		}
+		indices[plot.index].push(plot.key);
+	}
+	var st = Date.now();
+	function update_arrays() {
+		if (num_ok != env.plots.length) return;
+		update_latency(Date.now()-st);
+		console.log("updated all indices!");
+		var xaxis = {};
+		for (var i=0; i<env.plots.length; i++) {
+			var plot = env.plots[i];
+			var x = xaxis[plot.index];
+			if (!x) {
+				var icache = cache.indices[plot.index];
+				x = [];
+				for (var j=0; j<icache.data.length; j++) {
+					var e = icache.data[j];
+					if (e >= env.selection[0] && e <= env.selection[1]) x.push([j, e]);
+				}
+				xaxis[plot.index] = x;
+			}
+			var lst = [];
+			for (var j=0; j<x.length; j++) {
+				lst.push([x[j][1], cache.keys[plot.key][x[j][0]]]);
+			}
+			flot.data[i].data = lst;
+		}
+		mkplot();
+	}
+	function key_loader(lst) {
+		return function () {
+			for (var i=0; i<lst.length; i++) {
+				load_key(lst[i], function () {
+					num_ok++;
+					update_arrays();
+				});
+			}
+		}
+	}
+	for (var idx in indices) {
+		var lst = indices[idx];
+		load_index(idx, key_loader(lst));
+	}
+	update_arrays();
+}
+
 function add_key(k) {
 	var key = env.keys[k];
 	function _add_key() {
@@ -240,7 +314,7 @@ function add_key(k) {
 				lst.push([icache.data[i], dcache[i]]);
 			}
 			flot.data.push({data: lst, label: k});
-			env.plots.push({key: k});
+			env.plots.push({key: k, index: key.index});
 			mkplot();
 		}
 		if (!cache.keys[k]) load_key(k, __add_key);
@@ -269,8 +343,8 @@ function render_sidebar() {
 		if (env.filter && !env.filter.test(key)) continue;
 		var li = document.createElement("li");
 		li.style.display="block";
-		var sel = false; //Math.random() > 0.7;
-		var str = '<div style="display:flex;flex-direction:row;width:100%;"'+(sel?' class="color-4"':'')+'><div style="flex:0;"><input style="margin-top:6px;" id="chk-'+i+'" type="checkbox" data-key="'+key+'"></div>';
+		var sel = env.keys[key].selected;
+		var str = '<div style="display:flex;flex-direction:row;width:100%;"'+(sel?' class="color-4"':'')+'><div style="flex:0;"><input'+(sel?' checked':'')+' style="margin-top:6px;" id="chk-'+i+'" type="checkbox" data-key="'+key+'"></div>';
 		str += '<div style="flex:1;overflow-x:hidden;display:block;"><label style="text-overflow:ellipsis;white-space:nowrap;width:100%;padding:5px;display:block;" for="chk-'+i+'">'+key+'</label></div>';
 			/*str += '<div style="flex:0; min-width:2em;';
 			if (sel) {
@@ -286,9 +360,13 @@ function render_sidebar() {
 		document.getElementById("chk-"+i).addEventListener('change', function () {
 			var key = this.getAttribute('data-key');
 			if (this.checked) {
+				env.keys[key].selected = true;
+				this.parentNode.parentNode.className = "color-4";
 				add_key(key);
 			} else {
 				remove_key(key);
+				env.keys[key].selected = false;
+				this.parentNode.parentNode.className = "";
 			}
 		});
 	}
@@ -332,6 +410,8 @@ function mkplot() {
 		$("#plot").unbind("plotselected").bind("plotselected", function (event, ranges) {
 			flot.opts.xaxes[0].min = ranges.xaxis.from;
 			flot.opts.xaxes[0].max = ranges.xaxis.to;
+			env.selection = [Math.floor(ranges.xaxis.from), Math.ceil(ranges.xaxis.to)];
+			update_zoom();
 			mkplot();
 			console.log("selected", ranges);
 		});

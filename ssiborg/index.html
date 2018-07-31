@@ -5,6 +5,7 @@
 <script type="text/javascript" src="jquery.min.js"></script>
 <script type="text/javascript" src="jquery.flot.min.js"></script>
 <script type="text/javascript" src="jquery.flot.selection.min.js"></script>
+<script type="text/javascript" src="jquery.flot.crosshair.js"></script>
 <style type="text/css">
 * {
 	font-family:monospace;
@@ -132,6 +133,9 @@ A complete abomination
 	<div class="nav-btns">
 		<button>&larr;</button><button>&rarr;</button>
 	</div>
+	<div class="nav-btns">
+		<input type=checkbox id="ch_btn">ch</input>
+	</div>
 </div>
 </div>
 
@@ -170,7 +174,11 @@ var flot = {data: [], opts: {
 		position: "right",
 	} ],
 	legend: {show: true},
-	selection: { mode: "xy" }
+	selection: { mode: "xy" },
+	crosshair: { mode: null,
+				 color: "rgba(100, 100, 100, 0.50)",
+				 lineWidth: 2
+			   }
 }, plot: null};
 
 var cache = {indices: {}, keys: {}};
@@ -415,7 +423,18 @@ function mkplot() {
 			mkplot();
 			console.log("selected", ranges);
 		});
-
+		$("#plot").unbind( "plothover").bind( "plothover", function ( evt, position, item ) {
+		if ( item ) {
+			// Lock the crosshair to the data point being hovered
+			flot.lockCrosshair({
+				x: item.datapoint[ 0 ],
+				y: item.datapoint[ 1 ]
+			});
+		} else {
+			// Return normal crosshair operation
+			flot.unlockCrosshair();
+		}
+	});	
 	} else
 		plot.innerHTML = banner;
 }
@@ -459,6 +478,14 @@ filter.addEventListener("keyup", function () {
 	render_sidebar();
 });
 
+document.getElementById("ch_btn").addEventListener('change', function () {
+	if (this.checked) {
+		flot.opts.crosshair.mode = "xy";
+	} else {
+		flot.opts.crosshair.mode = null;
+	}
+	mkplot();
+});
 /*for (var i=0; i<60; i++) {
 	add_to_sidebar("lol"+i);
 }*/

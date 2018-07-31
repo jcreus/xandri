@@ -1,2 +1,5 @@
 ingest/*.bin
 ingest/*.gz
+*.o
+x
+data/*

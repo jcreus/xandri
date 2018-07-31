@@ -69,6 +69,13 @@ html, body {
 .nav-btns button:hover {
 	background:#263238;
 }
+#links-setup {
+	display:inline;
+}
+#links-setup a {
+	color:white;
+	text-underline:none;
+}
 </style>
 </head>
 <body>
@@ -96,7 +103,16 @@ ssiborg
 <select style="font-size:100%;margin-left:10px;" id="frames">
 <option>Loading...</option>
 </select>
-<span style="text-align:right;font-size:60%;font-weight:normal;float:right;padding-right:10px;" id="info"></span>
+<div style="font-size:66.6%;" id="links-setup">
+<a href="" id="btn-config">Config</a> &middot;
+<a href="" id="btn-help">Help</a>
+</div>
+<div style="position:absolute;right:10px;top:0px;height:3.5em;font-size:66.6%;">
+<div style="position:relative;transform:translateY(-50%);top:50%;">
+<div style="line-height:normal;text-align:right;font-size:80%;font-weight:normal;" id="info"></div>
+<div style="line-height:normal;text-align:right;font-size:80%;font-weight:normal;" id="info2"></div>
+</div>
+</div>
 </div>
 
 </div>
@@ -153,6 +169,8 @@ var banner = plot.innerHTML;
 var plotP = document.getElementById("plot-parent");
 var plotA = document.getElementById("plot-area");
 var info = document.getElementById("info");
+var info2 = document.getElementById("info2");
+var latency = {max: 0, sum: 0, num: 0};
 
 /*var data = [
 	{ data: [[0,0],[1,1]], label: "", xaxis: 1 },
@@ -295,7 +313,7 @@ function update_zoom() {
 	}
 	for (var idx in indices) {
 		var lst = indices[idx];
-		load_index(idx, key_loader(lst));
+		if (indices[idx]) load_index(idx, key_loader(lst));
 	}
 	update_arrays();
 }
@@ -379,9 +397,18 @@ function render_frames(list) {
 	}
 	frames.innerHTML = str;
 }
+
 function update_latency(lat) {
-	info.innerHTML = 'Latency: ' + lat + ' ms';	
+	latency.sum += lat;
+	latency.num++;
+	latency.max = Math.max(latency.max, lat);
+	info.innerHTML = 'Latency [last/mean/max]: ' + lat + '/'+Math.round(latency.sum/latency.num)+'/'+latency.max + ' ms';
+	if (Object.keys(cache.indices).length > 0) {
+		var idx = cache.indices[Object.keys(cache.indices)[0]];
+		info2.innerHTML = 'Zoom: '+idx.zoom+', points: '+idx.data.length;
+	}
 }
+
 function select(v) {
 	env.frame = v;
 	var st = Date.now();

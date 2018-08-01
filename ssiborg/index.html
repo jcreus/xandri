@@ -72,6 +72,9 @@ html, body {
 .nav-btns button:hover {
 	background:#263238;
 }
+.nav-btns-pressed{
+	background:#263238 !important;
+}
 #links-setup {
 	display:inline;
 }
@@ -156,7 +159,7 @@ Hailed as the new benchmark for shitty code
 		<button>&larr;</button><button>&rarr;</button>
 	</div>
 	<div class="nav-btns">
-		<input type=checkbox id="ch_btn">ch</input>
+		<button id="ch_btn">&#65291;</button>
 	</div>
 	<style>
 		#axes {
@@ -246,7 +249,13 @@ var flot = {data: [], opts: {
 	crosshair: { mode: null,
 			 color: "rgba(100, 100, 100, 0.50)",
 			 lineWidth: 2
-		   }
+		   },
+	grid:{	autoHighlight:true, 
+			hoverable:true, 
+			clickable:true, 
+			axisMargin:10, 
+			borderWidth:1
+		}
 }, plot: null};
 
 /*, {
@@ -593,16 +602,23 @@ function mkplot() {
 			console.log("selected", ranges);
 		});
 		$("#plot").unbind( "plothover").bind( "plothover", function ( evt, position, item ) {
-		if ( item ) {
-			// Lock the crosshair to the data point being hovered
-			flot.lockCrosshair({
-				x: item.datapoint[ 0 ],
-				y: item.datapoint[ 1 ]
-			});
-		} else {
-			// Return normal crosshair operation
-			flot.unlockCrosshair();
-		}
+			if ( item ) {
+				// Lock the crosshair to the data point being hovered
+				flot.plot.lockCrosshair({
+					x: item.datapoint[ 0 ],
+					y: item.datapoint[ 1 ]
+				});
+				var x = item.datapoint[0].toFixed(2),
+				y = item.datapoint[1].toFixed(2);
+
+				$("#tooltip").html(item.series.label + "&#13; y = " +y +"&#13; x = "+ x)
+					.css({top: item.pageY+5, left: item.pageX+5})
+					.fadeIn(200);
+			} else {
+				// Return normal crosshair operation
+				flot.plot.unlockCrosshair();
+				$("#tooltip").hide();
+			}
 	    });	
 		var data = flot.plot.getData();
 		for (var i=0; i<data.length; i++) {
@@ -651,14 +667,25 @@ filter.addEventListener("keyup", function () {
 	render_sidebar();
 });
 
-document.getElementById("ch_btn").addEventListener('change', function () {
-	if (this.checked) {
-		flot.opts.crosshair.mode = "xy";
-	} else {
+document.getElementById("ch_btn").addEventListener("click", function () {
+	if (this.classList.contains("nav-btns-pressed")) {
+		this.classList.remove("nav-btns-pressed")
 		flot.opts.crosshair.mode = null;
+	} else {
+		this.classList.add("nav-btns-pressed")
+		flot.opts.crosshair.mode = "xy";
 	}
 	mkplot();
 });
+
+$("<div id='tooltip'></div>").css({
+	position: "absolute",
+	display: "none",
+	border: "1px solid #fdd",
+	padding: "2px",
+	"background-color": "#fee",
+	opacity: 0.80
+}).appendTo("body");
 
 btnhelp.addEventListener("click", function (e) {
 	e.preventDefault();
@@ -669,6 +696,8 @@ btnconfig.addEventListener("click", function (e) {
 	e.preventDefault();
 	alert("lol");
 });
+
+
 
 /*for (var i=0; i<60; i++) {
 	add_to_sidebar("lol"+i);

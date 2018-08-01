@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <signal.h>
+#include <time.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -237,6 +238,7 @@ void process(int fd) {
     while(strcmp(buf, "\r\n")) {
         if (fgets(buf, BUFSIZE, f) == 0) goto err;
     }
+    clock_t start = clock();
     fprintf(f, "HTTP/1.0 200 OK\n");
     fprintf(f, "Access-Control-Allow-Origin: *\n");
     fprintf(f, "Access-Control-Expose-Headers: Xandri-Data\n");
@@ -269,6 +271,7 @@ void process(int fd) {
         }
         process_key(f, name, key, low, high, zoom);
     }
+    printf("Processing took %.2f ms\n", (clock()-start)/((double)CLOCKS_PER_SEC)*1000);
     goto finalize;
 err:
     bye(f, "500", "Some error");

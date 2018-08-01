@@ -104,12 +104,12 @@ void write_to_file_as_type(FILE *f, val_accum_t va, int type, int width) {
             }
         }
     } else if (type == TYPE_INT) {
-        uint64_t val = 0;
+        int64_t val = 0;
         switch (width) {
-            case 1: val = (uint8_t)va; break;
-            case 2: val = (uint16_t)va; break;
-            case 4: val = (uint32_t)va; break;
-            case 8: val = (uint64_t)va; break;
+            case 1: val = (int8_t)va; break;
+            case 2: val = (int16_t)va; break;
+            case 4: val = (int32_t)va; break;
+            case 8: val = (int64_t)va; break;
         }
         if (!fwrite(&val, width, 1, f)) {
             printf("Unable to log to file.\n");

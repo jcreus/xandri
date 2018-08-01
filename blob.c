@@ -366,10 +366,10 @@ int blob_key_from_file(char *name, char *key, char *path, char *type, int width,
             break;
         case TYPE_INT:
             switch (value.width) {
-                case 1: val = *((uint8_t*)&data); break;
-                case 2: val = *((uint16_t*)&data); break;
-                case 4: val = *((uint32_t*)&data); break;
-                case 8: val = *((uint64_t*)&data); break;
+                case 1: val = *((int8_t*)&data); break;
+                case 2: val = *((int16_t*)&data); break;
+                case 4: val = *((int32_t*)&data); break;
+                case 8: val = *((int64_t*)&data); break;
             }
         }
         for (int j=0; j<index->num_summaries; j++) {

@@ -152,15 +152,6 @@ Hailed as the new benchmark for shitty code
 	</div>
 </div>
 <div style="flex:1;padding:10px;padding-top:5px;text-align:center;flex-grow:0;">
-	<div class="nav-btns">
-		<button>&#8962;</button>
-	</div>
-	<div class="nav-btns">
-		<button>&larr;</button><button>&rarr;</button>
-	</div>
-	<div class="nav-btns">
-		<button id="ch_btn">&#65291;</button>
-	</div>
 	<style>
 		#axes {
 			margin:0 auto;
@@ -205,9 +196,39 @@ Hailed as the new benchmark for shitty code
 			float:left;
 			padding:4px;
 		}
+		.axis-nav {
+			cursor:pointer;
+			padding:0;
+			min-height:1px; /* lol */
+		}
+		@media screen and (-webkit-min-device-pixel-ratio:0) { 
+			.axis-nav {
+				height:1px; /* bigger lol */
+			}
+		}
+		.axis-nav span {
+			min-width:1.75em;
+			text-align:center;
+			background:#37474f;
+			border:1px solid #263238;
+			border-left:none;
+			color:white;
+			font-size:150%;
+			font-weight:bold;
+			display:inline-block;
+			height:100%;
+		}
+		.axis-new-sec span {
+			border-left:1px solid #263238 !important;
+		}
+		.axis-new-sec {
+			padding-left:5px;
+		}
 	</style>
 
-	<table id="axes"> </table>
+	<table id="axes">
+	
+	</table>
 </div>
 </div>
 
@@ -481,6 +502,52 @@ var oldnum = -1;
 function render_axes() {
 	var s = "";
 	axes.innerHTML = s;
+	var tr = document.createElement("tr");
+	tr.className = "axis";
+
+	var td = document.createElement("td");
+	td.className = "axis-nav axis-new-sec";
+	var span = document.createElement("span");
+	span.className = "axis-name";
+	span.innerHTML = "&#8962;";
+	td.appendChild(span);
+	tr.appendChild(td);
+
+	var td = document.createElement("td");
+	td.className = "axis-nav axis-new-sec";
+	var span = document.createElement("span");
+	span.className = "axis-name";
+	span.innerHTML = "&larr;";
+	td.appendChild(span);
+	tr.appendChild(td);
+	var td = document.createElement("td");
+	td.className = "axis-nav";
+	var span = document.createElement("span");
+	span.className = "axis-name";
+	span.innerHTML = "&rarr;";
+	td.appendChild(span);
+	tr.appendChild(td);
+
+	var td = document.createElement("td");
+	td.className = "axis-nav axis-new-sec";
+	var span = document.createElement("span");
+	span.className = "axis-name";
+	span.innerHTML = "&#65291;";
+	td.appendChild(span);
+	span.addEventListener("click", function () {
+		if (this.classList.contains("nav-btns-pressed")) {
+			this.classList.remove("nav-btns-pressed")
+			flot.opts.crosshair.mode = null;
+		} else {
+			this.classList.add("nav-btns-pressed")
+			flot.opts.crosshair.mode = "xy";
+		}
+		mkplot();
+	});
+
+
+	tr.appendChild(td);
+	axes.appendChild(tr);
 
 	var vars = [];
 	for (var k=0; k<env.axes.length; k++) vars.push([]);
@@ -708,17 +775,6 @@ filter.addEventListener("keyup", function () {
 	if (this.value.length == 0) env.filter = null;
 	else env.filter = new RegExp(this.value, 'i');
 	render_sidebar();
-});
-
-document.getElementById("ch_btn").addEventListener("click", function () {
-	if (this.classList.contains("nav-btns-pressed")) {
-		this.classList.remove("nav-btns-pressed")
-		flot.opts.crosshair.mode = null;
-	} else {
-		this.classList.add("nav-btns-pressed")
-		flot.opts.crosshair.mode = "xy";
-	}
-	mkplot();
 });
 
 $("<div id='tooltip'></div>").css({

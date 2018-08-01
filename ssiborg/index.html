@@ -263,7 +263,18 @@ var latency = {max: 0, sum: 0, num: 0};
 	{ data: [[0.1,1.1], [1.1, 0.9]], label: "", yaxis: 3 }
 ];*/
 
-var env = {keys: {}, indices: {}, frames: [], plots: [], frame: null, selection: [0, -1], points: 200, filter: null, axes: [{name: "Axis 1", position: "left"}]};
+var env = { keys: {},
+			indices: {},
+			frames: [],
+			plots: [],
+			frame: null,
+			selection: [0, -1],
+			points: 200,
+			filter: null,
+			axes: [{name: "Axis 1", position: "left"}],
+			bounds: {},
+			nav: {cur: 0, history: [[0, -1]]}
+			};
 var flot = {data: [], opts: {
 	xaxes: [ {  } ],
 	yaxes: [ { alignTicksWithAxis: 1 } ],
@@ -310,6 +321,13 @@ function load_index(idx, ret) {
 			var arr = new type(buf);
 			var meta = JSON.parse(xhr.getResponseHeader('Xandri-Data'));
 			cache.indices[idx] = {data: arr, zoom: meta[0], low: meta[1], high: meta[2]};
+			var icache = cache.indices[idx];
+			if (!env.bounds[idx]) env.bounds[idx] = [Infinity, -Infinity];
+			env.bounds[idx][0] = Math.min(env.bounds[idx][0], icache.data[0]);
+			env.bounds[idx][1] = Math.max(env.bounds[idx][1], icache.data[icache.data.length-1]);
+			if (env.selection[1] == -1) {
+				env.selection = [icache.data[0], icache.data[icache.data.length-1]];
+			}
 			ret();
 		}
 	};
@@ -342,7 +360,10 @@ function load_key(k, ret) {
 
 function index_is_valid(idx) {
 	var icache = cache.indices[idx];
-	if (icache.zoom == 0) return true;
+	if (icache.data[0] > env.selection[0] || icache.data[icache.data.length-1] < env.selection[1])
+		return false;
+	if (icache.zoom == 0)
+		return true;
 	var num = 0;
 	for (var i=0; i<icache.data.length; i++) {
 		var e = icache.data[i];
@@ -418,9 +439,6 @@ function add_key(k) {
 	var key = env.keys[k];
 	function _add_key() {
 		var icache = cache.indices[key.index];
-		if (env.selection[1] == -1) {
-			env.selection = [icache.data[icache.low], icache.data[icache.high]];
-		}
 		function __add_key() {
 			var lst = [];
 			var dcache = cache.keys[k];
@@ -498,6 +516,37 @@ function render_frames(list) {
 	frames.innerHTML = str;
 }
 
+function go_home() {
+	flot.opts.xaxes[0] = {};
+	for (var i=0; i<env.plots.length; i++) {
+		var idxbounds = env.bounds[env.plots[i].index];
+		env.selection[0] = Math.min(idxbounds[0], env.selection[0]);
+		env.selection[1] = Math.max(idxbounds[1], env.selection[1]);
+	}
+	env.nav.cur = 0;
+	env.nav.history = [env.selection];
+	console.log("set selection to",env.selection, cache.indices.time)
+	update_zoom();
+	mkplot();
+}
+
+function go_nav(delta) {
+	var next = env.nav.cur + delta;
+	if (next < 0 || next >= env.nav.history.length)
+		return;
+	env.nav.cur = next;
+	env.selection = env.nav.history[next];
+	if (env.selection[1] == -1) {
+		flot.opts.xaxes[0] = {};
+	} else {
+			flot.opts.xaxes[0].min = env.selection[0];
+			flot.opts.xaxes[0].max = env.selection[1];
+	}
+	console.log("history", env.nav, "going to", next);
+	update_zoom();
+	mkplot();
+}
+
 var oldnum = -1;
 function render_axes() {
 	var s = "";
@@ -510,6 +559,7 @@ function render_axes() {
 	var span = document.createElement("span");
 	span.className = "axis-name";
 	span.innerHTML = "&#8962;";
+	span.addEventListener('click', go_home);
 	td.appendChild(span);
 	tr.appendChild(td);
 
@@ -518,6 +568,7 @@ function render_axes() {
 	var span = document.createElement("span");
 	span.className = "axis-name";
 	span.innerHTML = "&larr;";
+	span.addEventListener('click', function () { go_nav(-1); });
 	td.appendChild(span);
 	tr.appendChild(td);
 	var td = document.createElement("td");
@@ -525,6 +576,7 @@ function render_axes() {
 	var span = document.createElement("span");
 	span.className = "axis-name";
 	span.innerHTML = "&rarr;";
+	span.addEventListener('click', function () { go_nav(1); });
 	td.appendChild(span);
 	tr.appendChild(td);
 
@@ -708,6 +760,9 @@ function mkplot() {
 			flot.opts.xaxes[0].min = ranges.xaxis.from;
 			flot.opts.xaxes[0].max = ranges.xaxis.to;
 			env.selection = [Math.floor(ranges.xaxis.from), Math.ceil(ranges.xaxis.to)];
+			env.nav.history = env.nav.history.slice(0, env.nav.cur+1);
+			env.nav.cur = env.nav.history.length;
+			env.nav.history.push(env.selection);
 			update_zoom();
 			mkplot();
 			console.log("selected", ranges);

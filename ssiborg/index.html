@@ -128,7 +128,7 @@ ssiborg
 </div>
 
 <div style="display:flex; flex-direction: column;height:calc(100% - 3.5em);"> <!-- or row -->
-<div style="flex:0;flex-grow:1;overflow:hidden;" id="plot-area">
+<div style="flex:0;flex-grow:1;overflow:hidden;position:relative" id="plot-area">
 	<div id="plot-parent" style="text-align:center;">
 	<div id="plot" style="text-align:center;height:400px; width:600px;background:#a2adb2;margin:0 auto;" class="color-3">
 <pre style="font-size:90%;">
@@ -645,6 +645,8 @@ function mkplot() {
 			mkplot();
 			console.log("selected", ranges);
 		});
+
+
 		$("#plot").unbind( "plothover").bind( "plothover", function ( evt, position, item ) {
 			if ( item ) {
 				// Lock the crosshair to the data point being hovered
@@ -657,11 +659,24 @@ function mkplot() {
 
 				$("#tooltip").html(item.series.label + "<br>y = " +y +"<br>x = "+ x)
 					.css({top: item.pageY+5, left: item.pageX+5})
-					.fadeIn(200);
+					.fadeIn(100);
+				var box = item.series.yaxis.box;
+				$("#axis-highlight").css({
+					position: "absolute",
+					top: box.top, 
+					left: box.left,
+					width: box.width,
+					height: box.height,
+					"background-color":item.series.color
+					})
+					.fadeIn(100);
+
+				item.series.yaxis.box
 			} else {
 				// Return normal crosshair operation
 				flot.plot.unlockCrosshair();
 				$("#tooltip").hide();
+				$("#axis-highlight").hide();
 			}
 	    });	
 		var data = flot.plot.getData();
@@ -728,6 +743,14 @@ $("<div id='tooltip'></div>").css({
 	padding: "2px",
 	opacity: 0.80
 }).appendTo("body");
+
+$("<div class='axisTarget' id='axis-highlight'></div>").css({
+	position: "absolute",
+	display: "none",
+	padding: "2px",
+	opacity: 0.20,
+}).appendTo($("#plot-parent"));
+
 
 btnhelp.addEventListener("click", function (e) {
 	e.preventDefault();

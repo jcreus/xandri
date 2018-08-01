@@ -655,7 +655,7 @@ function mkplot() {
 				var x = item.datapoint[0].toFixed(2),
 				y = item.datapoint[1].toFixed(2);
 
-				$("#tooltip").html(item.series.label + "&#13; y = " +y +"&#13; x = "+ x)
+				$("#tooltip").html(item.series.label + "<br>y = " +y +"<br>x = "+ x)
 					.css({top: item.pageY+5, left: item.pageX+5})
 					.fadeIn(200);
 			} else {

@@ -475,6 +475,7 @@ function render_frames(list) {
 	frames.innerHTML = str;
 }
 
+var oldnum = -1;
 function render_axes() {
 	var s = "";
 	axes.innerHTML = s;
@@ -520,7 +521,6 @@ function render_axes() {
 			col.style.width = "10px";
 			col.style.padding = "5px 8px";
 			col.style.background = env.plots[ki].color;
-			console.log(env.plots[ki].color);
 			div.appendChild(col);
 
 			var txt = document.createElement("span");
@@ -529,9 +529,25 @@ function render_axes() {
 			txt.appendChild(document.createTextNode(k));
 			div.appendChild(txt);
 
+			div.draggable = "true";
+			div.addEventListener("dragstart", (function (key, ax) { return function (e) {
+				e.dataTransfer.setData("key", key);
+				e.dataTransfer.setData("from", ax);
+			}})(k, i+1));
+
 			td.appendChild(div);
 		}
 		tr.appendChild(td);
+
+		tr.addEventListener('drop', (function (to) { return function (e) {
+			e.preventDefault();
+			var key = e.dataTransfer.getData("key");
+			var from = parseInt(e.dataTransfer.getData("from"));
+			if (to != from) move_variable(key, from, to);
+			}})(i+1));
+		tr.addEventListener('dragover', function (e) {
+			e.preventDefault();
+		});
 
 		axes.appendChild(tr);
 	}
@@ -543,16 +559,42 @@ function render_axes() {
 	var span = document.createElement("span");
 	span.className = "axis-name";
 	span.appendChild(document.createTextNode("New axis"));
-	td.addEventListener('click', new_axis);
+	td.addEventListener('click', function () {
+		new_axis();
+		render_axes();
+	});
+	td.addEventListener('drop', function (e) {
+		e.preventDefault();
+		var key = e.dataTransfer.getData("key");
+		var from = parseInt(e.dataTransfer.getData("from"));
+		new_axis();
+		move_variable(key, from, env.axes.length);
+	});
+	td.addEventListener('dragover', function (e) {
+		e.preventDefault();
+	});
 	td.appendChild(span);
+
 	tr.appendChild(td);
 	axes.appendChild(tr);
+	if (oldnum != env.axes.length) resize();
+	oldnum = env.axes.length;
+}
+
+function move_variable(key, from, to) {
+	for (var i=0; i<env.plots.length; i++) {
+		if (env.plots[i].key == key) {
+			env.plots[i].axis = to;
+			flot.data[i].yaxis = to;
+		}
+	}
+	mkplot();
+	render_axes();
 }
 
 function new_axis() {
 	env.axes.push({name: "Axis "+(env.axes.length+1), position: "left"});
 	flot.opts.yaxes.push({alignTicksWithAxis: 1});
-	render_axes();
 }
 
 render_axes();
@@ -640,7 +682,6 @@ function resize() {
 		var h = plotA.clientHeight;
 		var w = plotA.clientWidth;
 		env.points = w;
-		console.log(h,w)
 		plot.style.width = ""+w+"px";
 		plot.style.height = ""+h+"px";
 		plotP.style.paddingTop = "" + ((plotA.clientHeight-h)/2.) + "px";

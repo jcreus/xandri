@@ -1,11 +1,14 @@
 <!doctype html>
 <html>
 <head>
+<meta charset="UTF-8">
 <title>ssiborg</title>
 <script type="text/javascript" src="jquery.min.js"></script>
 <script type="text/javascript" src="jquery.flot.min.js"></script>
 <script type="text/javascript" src="jquery.flot.selection.min.js"></script>
 <script type="text/javascript" src="jquery.flot.crosshair.js"></script>
+<script type="text/javascript" src="jquery.flot.log.js"></script>
+<script type="text/javascript" src="jquery.flot.axislabels.js"></script>
 <style type="text/css">
 * {
 	font-family:monospace;
@@ -50,11 +53,8 @@ html, body {
 	background:#00796b;
 }
 .nav-btns {
-	margin:5px;
-	display:inline-block;
 }
 .nav-btns button {
-	height:1.5em;
 	vertical-align:middle;
 	font-size:200%;
 	cursor:pointer;
@@ -63,12 +63,9 @@ html, body {
 	margin:0;
 	border:1px solid #263238;
 	font-size: 100%;
-}
-.nav-btns button:last-child {
-	border-left:none;
-}
-.nav-btns button:first-child {
-	border-left:1px solid #263238 !important;
+	padding:2px;
+	width:100%;
+	margin:2.5px 0px;
 }
 .nav-btns button:hover {
 	background:#263238;
@@ -273,12 +270,15 @@ var env = { keys: {},
 			selection: [0, -1],
 			points: 200,
 			filter: null,
-			axes: [{name: "Axis 1", position: "left"}],
+			axes: [{name: undefined, position: "left"}],
 			bounds: {},
 			nav: {cur: 0, history: [[0, -1]]},
 			bytes: 0
 			};
 var flot = {data: [], opts: {
+	axisLabels: {
+		show: true,
+	},
 	xaxes: [ {  } ],
 	yaxes: [ { alignTicksWithAxis: 1 } ],
 	legend: {show: false},
@@ -598,12 +598,18 @@ function go_nav(delta) {
 }
 
 $(document).click(function (e) {
+	var hmm = document.getElementById("popup");
+	if (!hmm) return;
 	if (!($(e.target).is("#popup")||$(e.target).parents("#popup").length)){
+		var e = new Event("keypress");
+		e.which = 13;
+		document.getElementById("popup-inp").dispatchEvent(e);
 		$("#popup").remove();
 	}
 });
 
 var oldnum = -1;
+var oldheight = -1;
 function render_axes() {
 	var s = "";
 	axes.innerHTML = s;
@@ -671,21 +677,22 @@ function render_axes() {
 
 		var td = document.createElement("td");
 		td.className = "axis-label";
+		td.style.cursor = "pointer";
 		var name = document.createElement("span");
 		name.className = "axis-name";
-		name.appendChild(document.createTextNode(ax.name));
+		name.appendChild(document.createTextNode(""+(i+1)));
 		td.appendChild(name);
 		var opts = document.createElement("span");
 		opts.className = "axis-opts";
 		opts.innerHTML = "&#9650;";
 		opts.dataInernalid = i;
-		opts.addEventListener("click", (function (i) { return function (e) {
+		td.addEventListener("click", (function (i) { return function (e) {
 			e.preventDefault();
 			e.stopPropagation();
 			$("#popup").remove();
 			var fullH = document.documentElement.clientHeight;
 			var fullW = document.documentElement.clientWidth;
-			var pos = this.parentNode.getBoundingClientRect();
+			var pos = this.getBoundingClientRect(); // .parentNode
 			var pop = document.createElement("div");
 			pop.style.position = "fixed";
 			pop.style.bottom = (fullH - pos.top) + "px";
@@ -693,7 +700,7 @@ function render_axes() {
 			pop.style.padding = "5px";
 			pop.style.background = "#455a64";
 			pop.style.border = "1px solid #263238";
-			pop.style.width = "100px";
+			pop.style.minWidth = "80px";
 			pop.style.color = "white";
 			pop.id = "popup";
 			document.body.appendChild(pop);
@@ -710,15 +717,63 @@ function render_axes() {
 			log_btn.addEventListener("click", (function (i) { return function (e) { 
 				if(env.axes[i].log){
 					env.axes[i].log = false;
-					flot.opts.yaxes[i]["transform"] = NaN;
+					flot.opts.yaxes[i].transform = undefined;
+					flot.opts.yaxes[i].mode = undefined;
 				} else {
 					env.axes[i].log = true;
-					flot.opts.yaxes[i]["transform"] = function(v) {return Math.log(v+0.0001);};
+					flot.opts.yaxes[i].mode = 'log';
+					flot.opts.yaxes[i].inverseTransform = function (v) {
+						return Math.pow(10, v);
+					}
+					flot.opts.yaxes[i]["transform"] = function(v) {
+						if (v > 0) {
+							return Math.log(v);
+						} else {
+							return null;
+						}
+					};
 				}
 				this.classList.toggle("nav-btns-pressed");
 				mkplot();
 			}})(i));
 			btns.appendChild(log_btn);
+
+			var right_btn = document.createElement("button");
+			if(env.axes[i].position == "right"){
+				right_btn.classList.add("nav-btns-pressed");
+			}
+			right_btn.addEventListener("click", (function (i) { return function (e) {
+				if (env.axes[i].position == "right") {
+					env.axes[i].position = "left";
+					flot.opts.yaxes[i].position = "left";
+					this.classList.remove("nav-btns-pressed");
+				} else {
+					env.axes[i].position = "right";
+					flot.opts.yaxes[i].position = "right";
+					this.classList.add("nav-btns-pressed");
+				}
+				mkplot();
+			}})(i));
+			right_btn.innerHTML = "right side";
+			btns.append(right_btn);
+
+			var inp = document.createElement("input");
+			inp.style.width = "100%";
+			inp.style.padding = "5px";
+			inp.style.marginTop = "5px";
+			inp.placeholder = "Label";
+			inp.addEventListener('keypress', (function (i) { return function(e) {
+				var c = e.keycode || e.which;
+				if (c == 13) {
+					env.axes[i].name = this.value.length == 0 ? undefined : this.value;
+					flot.opts.yaxes[i].axisLabel = env.axes[i].name;
+					mkplot();
+				}
+			}})(i));
+			inp.value = env.axes[i].name != undefined ? env.axes[i].name : "";
+			inp.id = "popup-inp";
+			btns.appendChild(inp);
+
 			return false;
 		}})(i));
 		td.appendChild(opts);
@@ -794,8 +849,9 @@ function render_axes() {
 
 	tr.appendChild(td);
 	axes.appendChild(tr);
-	if (oldnum != env.axes.length) resize();
+	if (oldnum != env.axes.length || oldheight != axes.clientHeight ) resize();
 	oldnum = env.axes.length;
+	oldheight = axes.clientHeight;
 }
 
 function move_variable(key, from, to) {
@@ -811,7 +867,7 @@ function move_variable(key, from, to) {
 
 function new_axis() {
 	env.axes.push({
-		name: "Axis "+(env.axes.length+1), 
+		name: undefined,
 		position: "left",
 		log: false,
 	});
@@ -918,8 +974,10 @@ function mkplot() {
 		for (var i=0; i<env.plots.length; i++) {
 			vars[env.plots[i].axis-1].push(i);
 		}
+		console.log("y axes",ax)
 		for (var i=0; i<env.axes.length; i++) {
-			var box = ax[i].box
+			var box = ax[i].box;
+			if (!box) continue;
 			var axh = document.createElement("div");
 			axh.style.position = "absolute";
 			axh.style.top = box.top+"px";

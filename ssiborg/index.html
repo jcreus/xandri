@@ -901,6 +901,13 @@ $("<div class='axisTarget' id='axis-highlight'></div>").css({
 	opacity: 0.10,
 }).appendTo($("#plot-parent"));
 
+plotP.addEventListener("mouseout", function(){
+	$("#tooltip").hide();
+});
+
+document.getElementById("axes").addEventListener("mouseover",function(){
+	$("#tooltip").hide();
+});
 
 btnhelp.addEventListener("click", function (e) {
 	e.preventDefault();

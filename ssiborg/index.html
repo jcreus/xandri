@@ -295,13 +295,17 @@ var flot = {data: [], opts: {
 		}
 }, plot: null};
 
+var config = {
+	CACHE_SIZE: 8
+}
+
 /*, {
 		// align if we are to the right
 		alignTicksWithAxis: 1,
 		position: "right",
 	}*/
 
-var cache = {indices: {}, keys: {}};
+var cache = {indices: {}, keys: {}, old: []};
 
 
 function clear() {
@@ -311,6 +315,16 @@ function clear() {
 
 function load_index(idx, ret) {
 	console.log("loading index", idx);
+	for (var i=0; i<cache.old.length; i++) {
+		var old = cache.old[i];
+		if (old[0][0] == idx && _index_is_valid(old[1])) {
+			cache.indices[idx] = old[1];
+			console.log("loaded from cache!");
+			ret();
+			return;
+		}
+	}
+
 	var xhr = new XMLHttpRequest();
 	xhr.open('GET', BASE + '/index/'+env.frame+'/'+idx+'/'+env.selection[0]+'/'+env.selection[1]+'/'+env.points, true);
 	xhr.responseType = 'arraybuffer';
@@ -330,6 +344,10 @@ function load_index(idx, ret) {
 			if (!env.bounds[idx]) env.bounds[idx] = [Infinity, -Infinity];
 			env.bounds[idx][0] = Math.min(env.bounds[idx][0], icache.data[0]);
 			env.bounds[idx][1] = Math.max(env.bounds[idx][1], icache.data[icache.data.length-1]);
+			cache.old.unshift([[idx, meta[0], meta[1], meta[2]], cache.indices[idx], {}]);
+			if (cache.old.length >= config.CACHE_SIZE) {
+				cache.old = cache.old.slice(0, config.CACHE_SIZE);
+			}
 			if (env.selection[1] == -1) {
 				env.selection = [icache.data[0], icache.data[icache.data.length-1]];
 			}
@@ -344,6 +362,19 @@ function load_key(k, ret) {
 	console.log("loading key", k);
 	var key = env.keys[k];
 	var idx = cache.indices[key.index];
+	for (var i=0; i<cache.old.length; i++) {
+		var old = cache.old[i];
+		if (old[0][0] == key.index &&
+			old[0][1] == idx.zoom &&
+			old[0][2] == idx.low &&
+			old[0][3] == idx.high &&
+			k in old[2]) {
+			console.log("loaded KEY from cache!");
+			cache.keys[k] = old[2][k];
+			ret();
+			return;
+		}
+	}
 	var xhr = new XMLHttpRequest();
 	xhr.open('GET', BASE + '/key/'+env.frame+'/'+k+'/'+idx.zoom+'/'+idx.low+'/'+idx.high, true);
 	xhr.responseType = 'arraybuffer';
@@ -357,6 +388,15 @@ function load_key(k, ret) {
 			var type = eval(key.type+"Array");
 			var arr = new type(buf);
 			cache.keys[k] = arr;
+			for (var i=0; i<cache.old.length; i++) {
+				var old = cache.old[i];
+				if (old[0][0] == key.index &&
+					old[0][1] == idx.zoom &&
+					old[0][2] == idx.low &&
+					old[0][3] == idx.high) {
+					cache.old[i][2][k] = arr;
+				}
+			}
 			ret();
 		}
 	};
@@ -364,8 +404,7 @@ function load_key(k, ret) {
 	xhr.send();
 }
 
-function index_is_valid(idx) {
-	var icache = cache.indices[idx];
+function _index_is_valid(icache) {
 	if (icache.data[0] > env.selection[0] || icache.data[icache.data.length-1] < env.selection[1])
 		return false;
 	if (icache.zoom == 0)
@@ -376,6 +415,11 @@ function index_is_valid(idx) {
 		if (e >= env.selection[0] && e <= env.selection[1]) num++;
 	}
 	return num >= env.points;
+}
+
+function index_is_valid(idx) {
+	var icache = cache.indices[idx];
+	return _index_is_valid(icache);
 }
 
 function update_zoom() {
@@ -896,8 +940,11 @@ function mkplot() {
 				varh.style.zIndex=1;
 				axh.appendChild(varh);
 		}}
-	} else
+	} else {
 		plot.innerHTML = banner;
+		var ac = document.getElementById("axis-container");
+	    ac.innerHTML = "";
+	}
 }
 
 var clearint;

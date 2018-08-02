@@ -8,11 +8,15 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <dirent.h>
+#include <assert.h>
 #include <fcntl.h>
 #include <unistd.h>
 
 #include "server.h"
 #include "util.h"
+#include "zlib.h"
+
+#define CHUNK_SIZE 524288
 
 frame_t frames[MAX_FRAMES] = {0};
 int num_frames = 0;
@@ -167,8 +171,11 @@ void process_keys(FILE *f, char *name) {
     fprintf(f, "]}");
 }
 
-void process_index(FILE *f, char *name, char *key, unsigned long low, unsigned long high, int points) {
+void process_index(FILE *f, char *name, char *key, unsigned long low, unsigned long high, int points, int use_compression) {
     fprintf(f, "Content-type: application/octet-stream\n");
+    if (use_compression) {
+        fprintf(f, "Content-Encoding: deflate\n");
+    }
     index_files_t *idx = blob_open_index(name, key); // TODO iter
     index_query_t result;
     blob_query_index(idx, low, high, (long)points, &result);
@@ -177,11 +184,35 @@ void process_index(FILE *f, char *name, char *key, unsigned long low, unsigned l
     fprintf(f, "\r\n");
 
     char *start = ((char*)idx->ptr[result.zoom]) + idx->info.width * result.low;
-    fwrite(start, result.high - result.low + 1, idx->info.width, f);
+    size_t nbytes = (result.high-result.low+1)*idx->info.width;
+
+    if (!use_compression) {
+        fwrite(start, result.high - result.low + 1, idx->info.width, f);
+    } else {
+        z_stream stream;
+        stream.zalloc = Z_NULL;
+        stream.zfree = Z_NULL;
+        stream.opaque = Z_NULL;
+        stream.avail_in = (uInt)nbytes;
+        stream.next_in = (Bytef*)start;
+        char out[CHUNK_SIZE];
+        stream.avail_out = (uInt)CHUNK_SIZE;
+        stream.next_out = (Bytef*)out;
+
+        assert(deflateInit(&stream, 6) == Z_OK);
+        assert(deflate(&stream, Z_FINISH) != Z_STREAM_ERROR);
+        deflateEnd(&stream);
+        printf("wrote out %d, inp %d\n", (int)(CHUNK_SIZE-stream.avail_out), (int)nbytes);
+        fwrite(out, CHUNK_SIZE-stream.avail_out, 1, f);
+    }
+
 }
 
-void process_key(FILE *f, char *name, char *key, unsigned long low, unsigned long high, int zoom) {
+void process_key(FILE *f, char *name, char *key, unsigned long low, unsigned long high, int zoom, int use_compression) {
     fprintf(f, "Content-type: application/octet-stream\n");
+    if (use_compression) {
+        fprintf(f, "Content-Encoding: deflate\n");
+    }
     char meta_path[PATH_MAX];
     get_subpath(name, meta_path, "keys", key, "meta");
     FILE *meta_file = fopen(meta_path, "rb");
@@ -210,7 +241,28 @@ void process_key(FILE *f, char *name, char *key, unsigned long low, unsigned lon
     void *map = mmap(NULL, s.st_size, PROT_READ, MAP_SHARED, df, 0);
 
     char *start = ((char*)map) + info.width * low;
-    fwrite(start, high - low + 1, info.width, f);
+    size_t nbytes = (high - low + 1)*info.width;
+
+    if (!use_compression) {
+        fwrite(start, high - low + 1, info.width, f);
+    } else {
+        z_stream stream;
+        stream.zalloc = Z_NULL;
+        stream.zfree = Z_NULL;
+        stream.opaque = Z_NULL;
+        stream.avail_in = (uInt)nbytes;
+        stream.next_in = (Bytef*)start;
+        char out[CHUNK_SIZE];
+        stream.avail_out = (uInt)CHUNK_SIZE;
+        stream.next_out = (Bytef*)out;
+
+        assert(deflateInit(&stream, 6) == Z_OK);
+        assert(deflate(&stream, Z_FINISH) != Z_STREAM_ERROR);
+        deflateEnd(&stream);
+        printf("wrote out %d, inp %d\n", (int)(CHUNK_SIZE-stream.avail_out), (int)nbytes);
+        fwrite(out, CHUNK_SIZE-stream.avail_out, 1, f);
+    }
+
     munmap(map, s.st_size);
     close(df);
 }
@@ -235,9 +287,21 @@ void process(int fd) {
         goto finalize;
     }
     if (fgets(buf, BUFSIZE, f) == 0) goto err;
+    int use_gzip = 0b10;
     while(strcmp(buf, "\r\n")) {
+        if (strncasecmp(buf, "Accept-Encoding", strlen("Accept-Encoding")) == 0) {
+            use_gzip |= 1;
+        } else if (strncasecmp(buf, "Xandri-No-Compress", strlen("Xandri-No-Compress")) == 0) {
+            use_gzip &= ~2;
+        }
         if (fgets(buf, BUFSIZE, f) == 0) goto err;
     }
+    if (use_gzip == 3) {
+        printf("using compression!\n");
+    } else {
+        printf("not compressing\n");
+    }
+    int use_compression = use_gzip == 3;
     clock_t start = clock();
     fprintf(f, "HTTP/1.0 200 OK\n");
     fprintf(f, "Access-Control-Allow-Origin: *\n");
@@ -258,7 +322,7 @@ void process(int fd) {
             fprintf(f, "\r\nlength %d | %s\n",i, uri);
             goto finalize;
         }
-        process_index(f, name, key, low, high, points);
+        process_index(f, name, key, low, high, points, use_compression);
     } else if (strncmp(uri, "/key", strlen("/key")) == 0) {
         long low, high;
         int zoom;
@@ -269,7 +333,7 @@ void process(int fd) {
             fprintf(f, "\r\nlength %d | %s\n", i, uri);
             goto finalize;
         }
-        process_key(f, name, key, low, high, zoom);
+        process_key(f, name, key, low, high, zoom, use_compression);
     }
     printf("Processing took %.2f ms\n", (clock()-start)/((double)CLOCKS_PER_SEC)*1000);
     goto finalize;

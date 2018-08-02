@@ -273,7 +273,8 @@ var env = { keys: {},
 			filter: null,
 			axes: [{name: "Axis 1", position: "left"}],
 			bounds: {},
-			nav: {cur: 0, history: [[0, -1]]}
+			nav: {cur: 0, history: [[0, -1]]},
+			bytes: 0
 			};
 var flot = {data: [], opts: {
 	xaxes: [ {  } ],
@@ -317,6 +318,8 @@ function load_index(idx, ret) {
 		if (this.status == 200) {
 			update_latency(Date.now()-st);
 			var buf = xhr.response;
+			console.log(buf, buf.byteLength)
+			env.bytes += buf.byteLength;
 			var type = eval("Uint"+(8*env.indices[idx].width)+"Array");
 			var arr = new type(buf);
 			var meta = JSON.parse(xhr.getResponseHeader('Xandri-Data'));
@@ -348,6 +351,7 @@ function load_key(k, ret) {
 		if (this.status == 200) {
 			update_latency(Date.now()-st);
 			var buf = xhr.response;
+			env.bytes += buf.byteLength;
 			var type = eval(key.type+"Array");
 			var arr = new type(buf);
 			cache.keys[k] = arr;
@@ -727,15 +731,16 @@ function update_latency(lat) {
 	info.innerHTML = 'Latency [last/mean/max]: ' + lat + '/'+Math.round(latency.sum/latency.num)+'/'+latency.max + ' ms';
 	if (Object.keys(cache.indices).length > 0) {
 		var idx = cache.indices[Object.keys(cache.indices)[0]];
-		info2.innerHTML = 'Zoom: '+idx.zoom+', points: '+idx.data.length;
+		info2.innerHTML = 'Zoom: '+idx.zoom+', points: '+idx.data.length+', uncompressed: '+Math.round(env.bytes/1024)+' kiB';
 	}
 }
 
 function select(v) {
 	env.frame = v;
 	var st = Date.now();
-	$.getJSON(BASE+'/keys/'+v, function (data) {
+	$.getJSON(BASE+'/keys/'+v, function (data, stat, xhr) {
 		update_latency(Date.now()-st);
+		env.bytes += xhr.responseText.length;
 		env.indices = {};
 		for (var i=0; i<data.indices.length; i++) {
 			env.indices[data.indices[i].name] = {width: data.indices[i].width};

@@ -75,9 +75,8 @@ The plugin also adds four public methods:
             if (!pos)
                 crosshair.x = -1;
             else {
-                var o = plot.p2c(pos);
-                crosshair.x = Math.max(0, Math.min(o.left, plot.width()));
-                crosshair.y = Math.max(0, Math.min(o.top, plot.height()));
+                crosshair.x = Math.max(0, Math.min(pos.left, plot.width()));
+                crosshair.y = Math.max(0, Math.min(pos.top, plot.height()));
             }
             
             plot.triggerRedrawOverlay();

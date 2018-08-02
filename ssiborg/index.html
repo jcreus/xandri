@@ -552,6 +552,12 @@ function go_nav(delta) {
 	mkplot();
 }
 
+$(document).click(function (e) {
+	if (!$(e.target).is("#popup")) {
+		$("#popup").remove();
+	}
+});
+
 var oldnum = -1;
 function render_axes() {
 	var s = "";
@@ -627,9 +633,27 @@ function render_axes() {
 		var opts = document.createElement("span");
 		opts.className = "axis-opts";
 		opts.innerHTML = "&#9650;";
-		opts.addEventListener("click", (function (name) { return function () {
-			alert("options for "+name);
-		}})(ax.name));
+		opts.addEventListener("click", (function (i) { return function (e) {
+			e.preventDefault();
+			e.stopPropagation();
+			$("#popup").remove();
+			var fullH = document.documentElement.clientHeight;
+			var fullW = document.documentElement.clientWidth;
+			var pos = this.parentNode.getBoundingClientRect();
+			var pop = document.createElement("div");
+			pop.style.position = "fixed";
+			pop.style.bottom = (fullH - pos.top) + "px";
+			pop.style.right = (fullW - pos.right) + "px";
+			pop.style.padding = "5px";
+			pop.style.background = "#37474f";
+			pop.style.border = "1px solid #263238";
+			pop.style.width = "100px";
+			pop.style.color = "white";
+			pop.innerHTML = "hello<br>world!";
+			pop.id = "popup";
+			document.body.appendChild(pop);
+			return false;
+		}})(i));
 		td.appendChild(opts);
 		tr.appendChild(td);
 

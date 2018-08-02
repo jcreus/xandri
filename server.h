@@ -13,7 +13,6 @@ typedef struct index_iter {
 } index_iter;
 
 typedef struct {
-    char *name;
     index_iter *index;
     int nkeys;
     char **keys;

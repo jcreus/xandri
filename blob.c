@@ -12,9 +12,6 @@
 #include "util.h"
 #include "blob.h"
 
-char *idxcache_keys[MAX_INDICES] = {0};
-index_files_t *idxcache_values[MAX_INDICES] = {0};
-
 int blob_print_help() {
     printf("Usage: x blob [create/create-index]\n");
     return 0;
@@ -246,20 +243,8 @@ int blob_query_index_cmd(int argc, char *argv[]) {
 }
 
 index_files_t *blob_open_index(char *name, char *key) {
-    int max_index;
-    for (max_index=0; max_index<MAX_INDICES; max_index++) {
-        if (idxcache_keys[max_index] == 0) break;
-        if (strcmp(idxcache_keys[max_index], name) == 0 &&
-            strcmp(idxcache_keys[max_index] + strlen(name), key) == 0) {
-            printf("found cache!\n");
-            return idxcache_values[max_index];
-        }
-    }
-    if (max_index == MAX_INDICES) max_index = 0;
     printf("Adding index to cache\n");
     index_files_t *ret = (index_files_t*)malloc(sizeof(index_files_t));
-    idxcache_keys[max_index] = strdup(key);
-    idxcache_values[max_index] = ret;
     for (int i=0; i<(MAX_SUMMARIES+1); i++) {
         ret->fds[i] = 0;
         ret->ptr[i] = 0;
@@ -289,7 +274,7 @@ index_files_t *blob_open_index(char *name, char *key) {
         }
         struct stat s;
         fstat(ret->fds[i], &s);
-        ret->ptr[i] = mmap(NULL, s.st_size, PROT_READ, MAP_SHARED | MAP_POPULATE, ret->fds[i], 0);
+        ret->ptr[i] = mmap(NULL, s.st_size, PROT_READ, MAP_SHARED, ret->fds[i], 0);
         if (ret->ptr[i] == MAP_FAILED) {
             printf("mmap failed :'( %s\n", strerror(errno));
             return 0;

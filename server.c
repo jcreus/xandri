@@ -18,9 +18,6 @@
 
 #define CHUNK_SIZE 524288
 
-frame_t frames[MAX_FRAMES] = {0};
-int num_frames = 0;
-
 index_iter *server_init_indices(char *name) {
     char path[PATH_MAX];
     get_indices_path(name, path);
@@ -78,31 +75,18 @@ char **server_init_keys(char *name, int *nkeys) {
     return (char**)out;
 }
 
-int server_init_cache() {
-    char *data_dir = get_data_dir();
-    DIR *dir = opendir(data_dir);
-    if (dir == 0) {
-        printf("Unable to open data directory.\n");
-        return 1;
-    }
-    struct dirent *entry;
-    while ((entry = readdir(dir)) != 0) {
-        if (entry->d_type == DT_DIR && entry->d_name[0] != '.') {
-            printf("Found frame %s.\n", entry->d_name);
-            index_iter *idx = server_init_indices(entry->d_name);
-            if (idx == 0) {
-                printf("Unable to initialize indices.\n");
-                return 1;
-            }
-            frames[num_frames].index = idx;
-            frames[num_frames].name = strdup(entry->d_name);
-            frames[num_frames].keys = server_init_keys(entry->d_name, &frames[num_frames].nkeys);
-            num_frames++;
-        }
-    }
-    closedir(dir);
-    return 0;
+void server_open_frame(char *name, frame_t *frame) {
+    frame->index = server_init_indices(name);
+    assert(frame->index != 0);
+    frame->keys = server_init_keys(name, &frame->nkeys);
+    assert(frame->keys != 0);
 }
+
+void server_close_frame(frame_t *frame) {
+    // oof ouch my ram
+    // jk this is before closing process anyway
+}
+
 
 void bye(FILE *f, char *num, char *msg) {
     fprintf(f, "HTTP/1.0 %s\n", num);
@@ -115,24 +99,27 @@ void process_frames(FILE *f) {
     fprintf(f, "Content-type: application/json\n");
     fprintf(f, "\r\n");
     fprintf(f, "[");
-    for (int i=0; i<num_frames; i++) {
-        fprintf(f, "\"%s\"", frames[i].name);
-        if (i != num_frames - 1) {
-            fprintf(f, ", ");
+    char *data_dir = get_data_dir();
+    DIR *dir = opendir(data_dir);
+    assert(dir != 0);
+    struct dirent *entry;
+    int first = 1;
+    while ((entry = readdir(dir)) != 0) {
+        if (entry->d_type == DT_DIR && entry->d_name[0] != '.') {
+            if (!first) {
+                fprintf(f, ", ");
+            }
+            fprintf(f, "\"%s\"", entry->d_name);
+            first = 0;
         }
     }
+    closedir(dir);
     fprintf(f, "]");
 }
 
 void process_keys(FILE *f, char *name) {
-    int i;
-    for (i=0; i<num_frames; i++) {
-        if (strcmp(frames[i].name, name) == 0) {
-            break;
-        }
-    }
-    if (i == num_frames) return;
-    frame_t frame = frames[i];
+    frame_t frame;
+    server_open_frame(name, &frame);
 
     fprintf(f, "Content-type: application/json\n");
     fprintf(f, "\r\n");
@@ -348,10 +335,6 @@ finalize:
 
 int serve_cmd(int argc, char *argv[]) {
     signal(SIGCHLD,SIG_IGN);
-    if (server_init_cache()) {
-        printf("Unable to initialize cache.\n");
-        return 1;
-    }
 
     char *port_str = get_named_argument(argc, argv, 'p', "2718");
     unsigned short port = (unsigned short)atoi(port_str);

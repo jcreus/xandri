@@ -778,10 +778,11 @@ function mkplot() {
 		$("#plot").unbind( "plothover").bind( "plothover", function ( evt, position, item ) {
 			if ( item ) {
 				// Lock the crosshair to the data point being hovered
-				flot.plot.lockCrosshair({
-					x: item.datapoint[ 0 ],
-					y: item.datapoint[ 1 ]
-				});
+				var pos = {};
+				pos["x"] = item.datapoint[0];
+				pos["y"+item.series.yaxis.n] = item.datapoint[1];
+				var o = flot.plot.p2c(pos);
+				flot.plot.lockCrosshair(o);
 				var x = item.datapoint[0].toFixed(2),
 				y = item.datapoint[1].toFixed(2);
 

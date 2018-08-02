@@ -130,6 +130,7 @@ ssiborg
 <div style="display:flex; flex-direction: column;height:calc(100% - 3.5em);"> <!-- or row -->
 <div style="flex:0;flex-grow:1;overflow:hidden;position:relative" id="plot-area">
 	<div id="plot-parent" style="text-align:center;">
+	<div id="axis-container" style="z-index:1"> </div>
 	<div id="plot" style="text-align:center;height:400px; width:600px;background:#a2adb2;margin:0 auto;" class="color-3">
 <pre style="font-size:90%;">
 
@@ -797,7 +798,7 @@ function mkplot() {
 					left: box.left,
 					width: box.width,
 					height: box.height,
-					"background-color":item.series.color
+					"background-color":"white"
 					})
 					.fadeIn(100);
 
@@ -813,6 +814,36 @@ function mkplot() {
 		for (var i=0; i<data.length; i++) {
 			env.plots[i].color = data[i].color;
 		}
+		var ac = document.getElementById("axis-container");
+	    ac.innerHTML = "";
+	    var ax = flot.plot.getYAxes();
+	    var vars = [];
+		for (var k=0; k<env.axes.length; k++) vars.push([]);
+		for (var i=0; i<env.plots.length; i++) {
+			vars[env.plots[i].axis-1].push(i);
+		}
+		for (var i=0; i<env.axes.length; i++) {
+			var box = ax[i].box
+			var axh = document.createElement("div");
+			axh.style.position = "absolute";
+			axh.style.top = box.top+"px";
+			axh.style.left = box.left+"px";
+			axh.style.width = box.width+"px";
+			axh.style.height = box.height+"px";
+			axh.style.display = "flex";
+			axh.style.flexDirection= "column";
+			ac.appendChild(axh);
+			for (var j=0; j<vars[i].length; j++) {
+				var ki = vars[i][j];
+				var varh = document.createElement("div");
+				varh.style.opacity = 0.15;
+				varh.style.background = env.plots[ki].color;
+				varh.style.padding = "0px";
+				varh.style.display = "block";
+				varh.style.flex = 1;
+				varh.style.zIndex=1;
+				axh.appendChild(varh);
+		}}
 	} else
 		plot.innerHTML = banner;
 }
@@ -866,7 +897,7 @@ $("<div class='axisTarget' id='axis-highlight'></div>").css({
 	position: "absolute",
 	display: "none",
 	padding: "2px",
-	opacity: 0.20,
+	opacity: 0.10,
 }).appendTo($("#plot-parent"));
 
 

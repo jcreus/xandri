@@ -62,6 +62,7 @@ html, body {
 	color:white;
 	margin:0;
 	border:1px solid #263238;
+	font-size: 100%;
 }
 .nav-btns button:last-child {
 	border-left:none;
@@ -553,7 +554,7 @@ function go_nav(delta) {
 }
 
 $(document).click(function (e) {
-	if (!$(e.target).is("#popup")) {
+	if (!($(e.target).is("#popup")||$(e.target).parents("#popup").length)){
 		$("#popup").remove();
 	}
 });
@@ -633,6 +634,7 @@ function render_axes() {
 		var opts = document.createElement("span");
 		opts.className = "axis-opts";
 		opts.innerHTML = "&#9650;";
+		opts.dataInernalid = i;
 		opts.addEventListener("click", (function (i) { return function (e) {
 			e.preventDefault();
 			e.stopPropagation();
@@ -645,13 +647,34 @@ function render_axes() {
 			pop.style.bottom = (fullH - pos.top) + "px";
 			pop.style.right = (fullW - pos.right) + "px";
 			pop.style.padding = "5px";
-			pop.style.background = "#37474f";
+			pop.style.background = "#455a64";
 			pop.style.border = "1px solid #263238";
 			pop.style.width = "100px";
 			pop.style.color = "white";
-			pop.innerHTML = "hello<br>world!";
 			pop.id = "popup";
 			document.body.appendChild(pop);
+
+			var btns = document.createElement("div")
+			btns.className = "nav-btns";
+			pop.appendChild(btns);
+			var log_btn = document.createElement("button");
+			if(env.axes[i].log){
+				log_btn.classList.add("nav-btns-pressed");
+			}
+			log_btn.type = "button";
+			log_btn.innerHTML = "log";
+			log_btn.addEventListener("click", (function (i) { return function (e) { 
+				if(env.axes[i].log){
+					env.axes[i].log = false;
+					flot.opts.yaxes[i]["transform"] = NaN;
+				} else {
+					env.axes[i].log = true;
+					flot.opts.yaxes[i]["transform"] = function(v) {return Math.log(v+0.0001);};
+				}
+				this.classList.toggle("nav-btns-pressed");
+				mkplot();
+			}})(i));
+			btns.appendChild(log_btn);
 			return false;
 		}})(i));
 		td.appendChild(opts);
@@ -743,7 +766,11 @@ function move_variable(key, from, to) {
 }
 
 function new_axis() {
-	env.axes.push({name: "Axis "+(env.axes.length+1), position: "left"});
+	env.axes.push({
+		name: "Axis "+(env.axes.length+1), 
+		position: "left",
+		log: false,
+	});
 	flot.opts.yaxes.push({alignTicksWithAxis: 1});
 }
 

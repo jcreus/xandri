@@ -243,7 +243,6 @@ int blob_query_index_cmd(int argc, char *argv[]) {
 }
 
 index_files_t *blob_open_index(char *name, char *key) {
-    printf("Adding index to cache\n");
     index_files_t *ret = (index_files_t*)malloc(sizeof(index_files_t));
     for (int i=0; i<(MAX_SUMMARIES+1); i++) {
         ret->fds[i] = 0;

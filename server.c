@@ -189,7 +189,7 @@ void process_index(FILE *f, char *name, char *key, unsigned long low, unsigned l
         assert(deflateInit(&stream, 6) == Z_OK);
         assert(deflate(&stream, Z_FINISH) != Z_STREAM_ERROR);
         deflateEnd(&stream);
-        printf("wrote out %d, inp %d\n", (int)(CHUNK_SIZE-stream.avail_out), (int)nbytes);
+        printf("%d -> %d", (int)nbytes, (int)(CHUNK_SIZE-stream.avail_out));
         fwrite(out, CHUNK_SIZE-stream.avail_out, 1, f);
     }
 
@@ -246,7 +246,7 @@ void process_key(FILE *f, char *name, char *key, unsigned long low, unsigned lon
         assert(deflateInit(&stream, 6) == Z_OK);
         assert(deflate(&stream, Z_FINISH) != Z_STREAM_ERROR);
         deflateEnd(&stream);
-        printf("wrote out %d, inp %d\n", (int)(CHUNK_SIZE-stream.avail_out), (int)nbytes);
+        printf("%d -> %d", (int)nbytes, (int)(CHUNK_SIZE-stream.avail_out));
         fwrite(out, CHUNK_SIZE-stream.avail_out, 1, f);
     }
 
@@ -284,15 +284,16 @@ void process(int fd) {
         if (fgets(buf, BUFSIZE, f) == 0) goto err;
     }
     if (use_gzip == 3) {
-        printf("using compression!\n");
+        //printf("using compression!\n");
     } else {
-        printf("not compressing\n");
+        //printf("not compressing\n");
     }
     int use_compression = use_gzip == 3;
     clock_t start = clock();
     fprintf(f, "HTTP/1.0 200 OK\n");
     fprintf(f, "Access-Control-Allow-Origin: *\n");
     fprintf(f, "Access-Control-Expose-Headers: Xandri-Data\n");
+    printf("%s ", uri);
     if (strncmp(uri, "/frames", strlen("/frames")) == 0) {
         process_frames(f);
     } else if (strncmp(uri, "/keys", strlen("/keys")) == 0) {
@@ -301,11 +302,10 @@ void process(int fd) {
     } else if (strncmp(uri, "/index", strlen("/index")) == 0) {
         unsigned long low, high;
         int points;
-        char name[NAME_MAX];
-        char key[NAME_MAX];
+        char name[256];
+        char key[256];
         int i = 0;
-        // TODO buffer overflow on sscanf
-        if ((i=sscanf(uri, "/index/%[^/]/%[^/]/%lu/%lu/%d", name, key, &low, &high, &points)) != 5) {
+        if ((i=sscanf(uri, "/index/%254[^/]/%254[^/]/%lu/%lu/%d", name, key, &low, &high, &points)) != 5) {
             fprintf(f, "\r\nlength %d | %s\n",i, uri);
             goto finalize;
         }
@@ -313,16 +313,16 @@ void process(int fd) {
     } else if (strncmp(uri, "/key", strlen("/key")) == 0) {
         long low, high;
         int zoom;
-        char name[NAME_MAX];
-        char key[NAME_MAX];
+        char name[256];
+        char key[256];
         int i = 0;
-        if ((i=sscanf(uri, "/key/%[^/]/%[^/]/%d/%ld/%ld", name, key, &zoom, &low, &high)) != 5) {
+        if ((i=sscanf(uri, "/key/%254[^/]/%254[^/]/%d/%ld/%ld", name, key, &zoom, &low, &high)) != 5) {
             fprintf(f, "\r\nlength %d | %s\n", i, uri);
             goto finalize;
         }
         process_key(f, name, key, low, high, zoom, use_compression);
     }
-    printf("Processing took %.2f ms\n", (clock()-start)/((double)CLOCKS_PER_SEC)*1000);
+    printf(", took %.2f ms\n", (clock()-start)/((double)CLOCKS_PER_SEC)*1000);
     goto finalize;
 err:
     bye(f, "500", "Some error");
@@ -330,7 +330,6 @@ finalize:
     fflush(f);
     fclose(f);
     close(fd);
-    printf("done!\n");
 }
 
 int serve_cmd(int argc, char *argv[]) {
@@ -377,9 +376,8 @@ int serve_cmd(int argc, char *argv[]) {
             close(client_fd);
         } else if (pid > 0) {
             close(client_fd);
-            printf("[Parent] Forked off!\n");
         } else if (pid == 0) {
-            printf("[Child] processing request... ");
+            printf("processing request ");
             process(client_fd);
             break;
         }

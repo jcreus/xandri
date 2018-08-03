@@ -129,7 +129,7 @@ ssiborg
 <div style="flex:0;flex-grow:1;overflow:hidden;position:relative" id="plot-area">
 	<div id="plot-parent" style="text-align:center;">
 	<div id="axis-container" style="z-index:1"> </div>
-	<div id="plot" style="text-align:center;height:400px; width:600px;background:#a2adb2;margin:0 auto;" class="color-3">
+	<div id="plot" style="color:black !important;text-align:center;height:400px; width:600px;background:#a2adb2;margin:0 auto;" class="color-3">
 <pre style="font-size:90%;">
 
 
@@ -739,6 +739,25 @@ function render_axes() {
 			btns.appendChild(log_btn);
 
 			var right_btn = document.createElement("button");
+			if(env.axes[i].position == "right"){
+				right_btn.classList.add("nav-btns-pressed");
+			}
+			right_btn.addEventListener("click", (function (i) { return function (e) {
+				if (env.axes[i].position == "right") {
+					env.axes[i].position = "left";
+					flot.opts.yaxes[i].position = "left";
+					this.classList.remove("nav-btns-pressed");
+				} else {
+					env.axes[i].position = "right";
+					flot.opts.yaxes[i].position = "right";
+					this.classList.add("nav-btns-pressed");
+				}
+				mkplot();
+			}})(i));
+			right_btn.innerHTML = "right side";
+			btns.append(right_btn);
+
+			var autoscale_btn = document.createElement("button");
 			if(env.axes[i].position == "right"){
 				right_btn.classList.add("nav-btns-pressed");
 			}

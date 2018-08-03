@@ -314,7 +314,6 @@ function clear() {
 }
 
 function load_index(idx, ret) {
-	console.log("loading index", idx);
 	for (var i=0; i<cache.old.length; i++) {
 		var old = cache.old[i];
 		if (old[0][0] == idx && _index_is_valid(old[1])) {
@@ -334,7 +333,6 @@ function load_index(idx, ret) {
 		if (this.status == 200) {
 			update_latency(Date.now()-st);
 			var buf = xhr.response;
-			console.log(buf, buf.byteLength)
 			env.bytes += buf.byteLength;
 			var type = eval("Uint"+(8*env.indices[idx].width)+"Array");
 			var arr = new type(buf);
@@ -359,7 +357,6 @@ function load_index(idx, ret) {
 }
 
 function load_key(k, ret) {
-	console.log("loading key", k);
 	var key = env.keys[k];
 	var idx = cache.indices[key.index];
 	for (var i=0; i<cache.old.length; i++) {
@@ -369,7 +366,7 @@ function load_key(k, ret) {
 			old[0][2] == idx.low &&
 			old[0][3] == idx.high &&
 			k in old[2]) {
-			console.log("loaded KEY from cache!");
+			console.log("loaded key from cache!");
 			cache.keys[k] = old[2][k];
 			ret();
 			return;
@@ -446,7 +443,6 @@ function update_zoom() {
 	function update_arrays() {
 		if (num_ok != env.plots.length) return;
 		update_latency(Date.now()-st);
-		console.log("updated all indices!");
 		var xaxis = {};
 		for (var i=0; i<env.plots.length; i++) {
 			var plot = env.plots[i];
@@ -575,7 +571,6 @@ function go_home() {
 	}
 	env.nav.cur = 0;
 	env.nav.history = [env.selection];
-	console.log("set selection to",env.selection, cache.indices.time)
 	update_zoom();
 	mkplot();
 }
@@ -592,7 +587,6 @@ function go_nav(delta) {
 			flot.opts.xaxes[0].min = env.selection[0];
 			flot.opts.xaxes[0].max = env.selection[1];
 	}
-	console.log("history", env.nav, "going to", next);
 	update_zoom();
 	mkplot();
 }
@@ -922,7 +916,6 @@ function mkplot() {
 			env.nav.history.push(env.selection);
 			update_zoom();
 			mkplot();
-			console.log("selected", ranges);
 		});
 
 
@@ -974,7 +967,6 @@ function mkplot() {
 		for (var i=0; i<env.plots.length; i++) {
 			vars[env.plots[i].axis-1].push(i);
 		}
-		console.log("y axes",ax)
 		for (var i=0; i<env.axes.length; i++) {
 			var box = ax[i].box;
 			if (!box) continue;
@@ -1008,7 +1000,6 @@ function mkplot() {
 var clearint;
 
 function resize() {
-	console.log("onresize");
 	plot.innerHTML = banner;
 	plot.style.width = "0px";
 	plot.style.height = "0px";

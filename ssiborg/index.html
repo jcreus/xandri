@@ -757,25 +757,6 @@ function render_axes() {
 			right_btn.innerHTML = "right side";
 			btns.append(right_btn);
 
-			var autoscale_btn = document.createElement("button");
-			if(env.axes[i].position == "right"){
-				right_btn.classList.add("nav-btns-pressed");
-			}
-			right_btn.addEventListener("click", (function (i) { return function (e) {
-				if (env.axes[i].position == "right") {
-					env.axes[i].position = "left";
-					flot.opts.yaxes[i].position = "left";
-					this.classList.remove("nav-btns-pressed");
-				} else {
-					env.axes[i].position = "right";
-					flot.opts.yaxes[i].position = "right";
-					this.classList.add("nav-btns-pressed");
-				}
-				mkplot();
-			}})(i));
-			right_btn.innerHTML = "right side";
-			btns.append(right_btn);
-
 			var inp = document.createElement("input");
 			inp.style.width = "100%";
 			inp.style.padding = "5px";

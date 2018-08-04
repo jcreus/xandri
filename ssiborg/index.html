@@ -295,6 +295,10 @@ var flot = {data: [], opts: {
 		}
 }, plot: null};
 
+flot.opts.xaxes[0].tickFormatter = function (a, _) {
+	return Math.round(a/60000.*100)/100;
+}
+
 var config = {
 	CACHE_SIZE: 8
 }

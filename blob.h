@@ -45,11 +45,15 @@ typedef struct {
 
 int blob_get_num_summaries(long length);
 
-int blob_print_help();
+int blob_print_help(void);
 int blob_create(char *name);
 int blob_index_from_file(char *name, char *key, char *path, int width, int use_summary);
+int blob_index_from_memory(char *name, char *key, void *mem, long num, int width, int use_summary);
 int blob_cmd(int argc, char *argv[]);
 void blob_query_index(index_files_t *idx, unsigned long low, unsigned long high, long points, index_query_t *result);
 index_files_t *blob_open_index(char *name, char *key);
+
+int blob_key_from_file(char *name, char *key, char *path, char *type, int width, char *index_str);
+int blob_key_from_memory(char *name, char *key, void *mem, long num, char *type, int width, char *index_str);
 
 #endif

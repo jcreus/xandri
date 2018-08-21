@@ -2,6 +2,7 @@
 #include <string.h>
 #include <limits.h>
 #include <stdlib.h>
+#include <assert.h>
 #include <sys/mman.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -49,16 +50,24 @@ int blob_get_num_summaries(long length) {
 
 int blob_index_from_file(char *name, char *key, char *path, int width, int use_summary) {
     printf("Creating index for %s.%s from %s, opts %d, %d.\n", name, key, path, width, use_summary);
-    FILE *file = fopen(path, "rb");
-    if (file == NULL) {
+    int idx = open(path, O_RDONLY);
+    if (idx < 0) {
         printf("Could not open file %s.\n", path);
         return 1;
     }
-    fseek(file, 0L, SEEK_END);
-    long sz = ftell(file);
-    long num = sz / width;
-    rewind(file);
+    struct stat s;
+    fstat(idx, &s);
 
+    long sz = s.st_size;
+    long num = sz / width;
+
+    void *map = mmap(NULL, s.st_size, PROT_READ, MAP_SHARED, idx, 0);
+    assert(map != 0);
+
+    return blob_index_from_memory(name, key, map, num, width, use_summary);
+}
+
+int blob_index_from_memory(char *name, char *key, void *mem, long num, int width, int use_summary) {
     index_t index;
     index.length = num;
     index.width = width;
@@ -82,7 +91,7 @@ int blob_index_from_file(char *name, char *key, char *path, int width, int use_s
 
     for (int i=0; i<num; i++) {
         uint64_t data = 0;
-        if (fread(&data, width, 1, file) != 1) goto err;
+        memcpy(&data, mem + width*i, width);
         write_to_file(files[0], &data, width);
         for (int j=0; j<index.num_summaries; j++) {
             cur_counts[j]++;
@@ -110,10 +119,6 @@ int blob_index_from_file(char *name, char *key, char *path, int width, int use_s
     fclose(meta_file);
 
     return 0;
-
-err:
-    printf("Error reading file.\n");
-    return 1;
 }
 
 int blob_create_index(int argc, char *argv[]) {
@@ -285,21 +290,31 @@ index_files_t *blob_open_index(char *name, char *key) {
 int blob_key_from_file(char *name, char *key, char *path, char *type, int width, char *index_str) {
     printf("Creating key for %s.%s from %s.\n", name, key, path);
 
-    index_t *index = &blob_open_index(name, index_str)->info;
-    if (index == 0) {
-        printf("Could not find index %s.\n", index_str);
-    }
-    printf("index shows %d summaries\n", index->num_summaries);
-
-    FILE *file = fopen(path, "rb");
-    if (file == NULL) {
+    int idx = open(path, O_RDONLY);
+    if (idx < 0) {
         printf("Could not open file %s.\n", path);
         return 1;
     }
-    fseek(file, 0L, SEEK_END);
-    long sz = ftell(file);
+    struct stat s;
+    fstat(idx, &s);
+
+    long sz = s.st_size;
     long num = sz / width;
-    rewind(file);
+
+    void *map = mmap(NULL, s.st_size, PROT_READ, MAP_SHARED, idx, 0);
+    assert(map != 0);
+
+    return blob_key_from_memory(name, key, map, num, type, width, index_str);
+}
+
+int blob_key_from_memory(char *name, char *key, void *mem, long num, char *type, int width, char *index_str) {
+    index_t *index = &blob_open_index(name, index_str)->info;
+    if (index == 0) {
+        printf("Could not find index %s.\n", index_str);
+        return 1;
+    }
+    printf("index shows %d summaries\n", index->num_summaries);
+
     if (num != index->length) {
         printf("Array dimension does not match index!\n");
         return 1;
@@ -321,8 +336,6 @@ int blob_key_from_file(char *name, char *key, char *path, char *type, int width,
     write_to_file(meta_file, index_str, strlen(index_str));
     fclose(meta_file);
 
-    //
-
     val_accum_t cur_sum[MAX_SUMMARIES] = {0};
     int cur_counts[MAX_SUMMARIES] = {0};
     FILE *files[MAX_SUMMARIES+1];
@@ -338,7 +351,7 @@ int blob_key_from_file(char *name, char *key, char *path, char *type, int width,
 
     for (int i=0; i<num; i++) {
         uint64_t data = 0;
-        if (fread(&data, width, 1, file) != 1) goto err;
+        memcpy(&data, mem + width*i, width);
         write_to_file(files[0], &data, width);
         val_accum_t val = 0;
         switch (value.type) {
@@ -375,10 +388,6 @@ int blob_key_from_file(char *name, char *key, char *path, char *type, int width,
     }
 
     return 0;
-
-err:
-    printf("Error reading file.\n");
-    return 1;
 }
 
 

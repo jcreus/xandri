@@ -1,7 +1,7 @@
 TARGET = x
 LIBS = -lm -lz
 CC = gcc
-CFLAGS = -g -Werror -O2 -fno-strict-aliasing -Wall -D__DIR__=$(shell pwd)
+CFLAGS = -g -Werror -O2 -fno-strict-aliasing -Wall -D__DIR__=$(shell pwd) -fPIC
 
 .PHONY: default all clean
 
@@ -19,6 +19,12 @@ HEADERS = $(wildcard *.h)
 
 $(TARGET): $(OBJECTS)
 	$(CC) $(OBJECTS) -Wall $(LIBS) -o $@
+
+py: $(OBJECTS)
+	ar rcs libxandri.a blob.o util.o
+	-rm -rf build
+	python3 setup.py build
+	cp build/lib*/_xandri* py_interface
 
 clean:
 	-rm -f *.o

@@ -656,8 +656,16 @@ function render_axes() {
 		}
 		mkplot();
 	});
+	tr.appendChild(td);
+	axes.appendChild(tr);
 
-
+	var td = document.createElement("td");
+	td.className = "axis-nav axis-new-sec";
+	var span = document.createElement("span");
+	span.className = "axis-name";
+	span.innerHTML = "&#10005;";
+	td.appendChild(span);
+	span.addEventListener("click", resetPopup);
 	tr.appendChild(td);
 	axes.appendChild(tr);
 
@@ -933,7 +941,6 @@ function mkplot() {
 				flot.plot.lockCrosshair(o);
 				var x = item.datapoint[0].toFixed(2),
 				y = item.datapoint[1].toFixed(2);
-
 				var bg_color = item.series.color.replace(')', ', 0.20)').replace('rgb', 'rgba');
 				$("#tooltip").html(item.series.label + "<br>y = " +y +"<br>x = "+ x)
 					.css({top: item.pageY+5, 
@@ -941,6 +948,7 @@ function mkplot() {
 						"background-color":bg_color})
 					.fadeIn(100);
 				var box = item.series.yaxis.box;
+
 				$("#axis-highlight").css({
 					position: "absolute",
 					top: box.top, 
@@ -950,7 +958,6 @@ function mkplot() {
 					"background-color":"white"
 					})
 					.fadeIn(100);
-
 				item.series.yaxis.box
 			} else {
 				// Return normal crosshair operation
@@ -958,7 +965,16 @@ function mkplot() {
 				$("#tooltip").hide();
 				$("#axis-highlight").hide();
 			}
-	    });	
+	    });
+	    $("#plot").unbind("plotclick").bind( "plotclick", function ( evt, position, item ) {
+	    	if (item) {
+	    		flot.plot.highlight(item.seriesIndex,item.dataIndex);
+	    		var bg_color = item.series.color.replace(')', ', 0.20)').replace('rgb', 'rgba');
+	    		$("#tooltip").clone().appendTo("body").css({top: item.pageY+5, 
+						left: item.pageX+5, 
+						"background-color":bg_color}).fadeIn(100);;
+	    	}
+	    });
 		var data = flot.plot.getData();
 		for (var i=0; i<data.length; i++) {
 			env.plots[i].color = data[i].color;
@@ -1001,6 +1017,21 @@ function mkplot() {
 	}
 }
 
+function resetPopup() {
+	if(flot.plot){
+		flot.plot.unhighlight();
+	}
+	$(".plot-tooltip").remove();
+	$("<div id='tooltip'></div>").css({
+		position: "absolute",
+		display: "none",
+		border: "0px solid #fdd",
+		padding: "2px",
+	}).addClass("plot-tooltip").appendTo("body");
+} 
+
+resetPopup();
+
 var clearint;
 
 function resize() {
@@ -1037,13 +1068,6 @@ filter.addEventListener("keyup", function () {
 	else env.filter = new RegExp(this.value, 'i');
 	render_sidebar();
 });
-
-$("<div id='tooltip'></div>").css({
-	position: "absolute",
-	display: "none",
-	border: "0px solid #fdd",
-	padding: "2px",
-}).appendTo("body");
 
 $("<div class='axisTarget' id='axis-highlight'></div>").css({
 	position: "absolute",

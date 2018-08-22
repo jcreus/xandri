@@ -73,6 +73,9 @@ int blob_index_from_memory(char *name, char *key, void *mem, long num, int width
     index.width = width;
     index.num_summaries = use_summary ? blob_get_num_summaries(num) : 0;
     index.num_points[0] = num;
+    for (int j=0; j<MAX_SUMMARIES; j++) {
+        index.num_points[j+1] = 0;
+    }
     printf("using %d summaries\n", index.num_summaries);
 
     accum_t cur_sum[MAX_SUMMARIES] = {0};
@@ -81,7 +84,7 @@ int blob_index_from_memory(char *name, char *key, void *mem, long num, int width
     char path_buf[PATH_MAX];
     get_subpath(name, path_buf, "indices", key, "0.bin");
     files[0] = fopen(path_buf, "wb");
-    for (int i=0; i<MAX_SUMMARIES; i++) {
+    for (int i=0; i<index.num_summaries; i++) {
         char suff[] = "x.bin";
         suff[0] = '1'+i;
         get_subpath(name, path_buf, "indices", key, suff);
@@ -117,6 +120,10 @@ int blob_index_from_memory(char *name, char *key, void *mem, long num, int width
     FILE *meta_file = fopen(meta_path, "wb");
     write_to_file(meta_file, &index, sizeof(index));
     fclose(meta_file);
+
+    for (int i=0; i<(index.num_summaries+1); i++) {
+        fclose(files[i]);
+    }
 
     return 0;
 }
@@ -279,6 +286,7 @@ index_files_t *blob_open_index(char *name, char *key) {
         struct stat s;
         fstat(ret->fds[i], &s);
         ret->ptr[i] = mmap(NULL, s.st_size, PROT_READ, MAP_SHARED, ret->fds[i], 0);
+        printf("st size is %lu fd %d i %d\n", s.st_size, ret->fds[i], i);
         if (ret->ptr[i] == MAP_FAILED) {
             printf("mmap failed :'( %s\n", strerror(errno));
             return 0;
@@ -313,7 +321,7 @@ int blob_key_from_memory(char *name, char *key, void *mem, long num, char *type,
         printf("Could not find index %s.\n", index_str);
         return 1;
     }
-    printf("index shows %d summaries\n", index->num_summaries);
+    //printf("index shows %d summaries\n", index->num_summaries);
 
     if (num != index->length) {
         printf("Array dimension does not match index!\n");
@@ -385,6 +393,9 @@ int blob_key_from_memory(char *name, char *key, void *mem, long num, char *type,
             val_accum_t val = cur_sum[j]/cur_counts[j];
             write_to_file_as_type(files[j+1], val, value.type, value.width);
         }
+    }
+    for (int j=0; j<(index->num_summaries+1); j++) {
+        fclose(files[j]);
     }
 
     return 0;

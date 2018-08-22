@@ -69,6 +69,39 @@ static PyObject *Writer_add_index(Writer *self, PyObject *args, PyObject *kwargs
     return Py_BuildValue("");
 }
 
+static PyObject *Writer_add_key(Writer *self, PyObject *args, PyObject *kwargs) {
+    const char *c_name = NULL;
+    const char *c_index = NULL;
+    PyObject *arr_arg = NULL;
+    PyArrayObject *arr_obj = NULL;
+    int width;
+    const char *c_type = NULL;
+
+    static char *kwlist[] = {"name", "index", "array", "width", "type", NULL};
+
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "ssOis", kwlist, &c_name, &c_index, &arr_arg, &width, &c_type)) {
+        PyErr_SetString(PyExc_ValueError, "Invalid arguments, or something.");
+        return 0;
+    }
+    arr_obj = PyArray_GETCONTIGUOUS((PyArrayObject*)arr_arg);
+    uint64_t *data = (uint64_t*)PyArray_DATA(arr_obj);
+
+    PyObject *ascii = PyUnicode_AsASCIIString(self->name);
+
+    blob_key_from_memory((char*)PyBytes_AsString(ascii),
+                            (char*)c_name,
+                            data,
+                            PyArray_DIM(arr_obj, 0),
+                            (char*)c_type,
+                            width,
+                            (char*)c_index);
+    Py_DECREF(arr_obj);
+    Py_DECREF(ascii);
+
+    return Py_BuildValue("");
+}
+
+
 static void Writer_dealloc(Writer* self) {
     Py_TYPE(self)->tp_free((PyObject *)self);
 }
@@ -81,7 +114,7 @@ static PyMemberDef Writer_members[] = {
 
 static PyMethodDef Writer_methods[] = {
     {"add_index", (PyCFunction)Writer_add_index, METH_VARARGS | METH_KEYWORDS, NULL},
-    {"add_key", (PyCFunction)Writer_add_index, METH_VARARGS | METH_KEYWORDS, NULL},
+    {"add_key", (PyCFunction)Writer_add_key, METH_VARARGS | METH_KEYWORDS, NULL},
     {NULL}
 };
 
@@ -163,6 +196,7 @@ void register_type(PyObject *module, const char *name, PyTypeObject *type) {
 }
 
 PyMODINIT_FUNC PyInit__xandri(void) {
+    import_array();
     PyObject *obj = PyModule_Create(&_xandri);
     WriterType.tp_new = PyType_GenericNew;
     register_type(obj, "Writer", &WriterType);

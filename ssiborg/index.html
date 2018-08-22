@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <title>ssiborg</title>
+<script type="text/javascript" src="long.js"></script>
 <script type="text/javascript" src="jquery.min.js"></script>
 <script type="text/javascript" src="jquery.flot.min.js"></script>
 <script type="text/javascript" src="jquery.flot.selection.min.js"></script>
@@ -235,6 +236,19 @@ Hailed as the new benchmark for shitty code
 
 </div>
 <script type="text/javascript">
+
+var Uint64Array = function(buf) {
+	var arr = new Uint8Array(buf);
+	var lst = 0;
+	var len = arr.length/8;
+	var out = new Float64Array(len);
+	for (var i=0; i<len; i++) {
+		out[i] = Long.fromBytesLE(arr.slice(8*i, 8*i+8));
+	}
+	console.log("hmm", out);
+	return out;
+}
+
 var BASE = "http://localhost:2718";
 if (window.location.href.indexOf("ssi-server4") != -1) {
 	BASE = "http://ssi-server4.stanford.edu:443";
@@ -340,6 +354,7 @@ function load_index(idx, ret) {
 			env.bytes += buf.byteLength;
 			var type = eval("Uint"+(8*env.indices[idx].width)+"Array");
 			var arr = new type(buf);
+			console.log("lol", arr);
 			var meta = JSON.parse(xhr.getResponseHeader('Xandri-Data'));
 			cache.indices[idx] = {data: arr, zoom: meta[0], low: meta[1], high: meta[2]};
 			var icache = cache.indices[idx];

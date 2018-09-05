@@ -295,6 +295,18 @@ index_files_t *blob_open_index(char *name, char *key) {
     return ret;
 }
 
+void blob_close_index(index_files_t *index) {
+    for (int i=0; i<(MAX_SUMMARIES+1); i++) {
+        if (index->fds[i] != 0) {
+            struct stat s;
+            fstat(index->fds[i], &s);
+            munmap(index->ptr[i], s.st_size);
+            close(index->fds[i]);
+        }
+    }
+    free(index);
+}
+
 int blob_key_from_file(char *name, char *key, char *path, char *type, int width, char *index_str) {
     printf("Creating key for %s.%s from %s.\n", name, key, path);
 
@@ -316,7 +328,8 @@ int blob_key_from_file(char *name, char *key, char *path, char *type, int width,
 }
 
 int blob_key_from_memory(char *name, char *key, void *mem, long num, char *type, int width, char *index_str) {
-    index_t *index = &blob_open_index(name, index_str)->info;
+    index_files_t *index_file = blob_open_index(name, index_str);
+    index_t *index = &index_file->info;
     if (index == 0) {
         printf("Could not find index %s.\n", index_str);
         return 1;
@@ -397,6 +410,7 @@ int blob_key_from_memory(char *name, char *key, void *mem, long num, char *type,
     for (int j=0; j<(index->num_summaries+1); j++) {
         fclose(files[j]);
     }
+    blob_close_index(index_file);
 
     return 0;
 }
@@ -422,15 +436,15 @@ int blob_create_key(int argc, char *argv[]) {
 }
 
 int blob_cmd(int argc, char *argv[]) {
-	// TODO error checking
-	if (strcmp(argv[0], "create") == 0) {
-	    return blob_create(argv[1]);
-	} else if (strcmp(argv[0], "create-index") == 0) {
+    // TODO error checking
+    if (strcmp(argv[0], "create") == 0) {
+        return blob_create(argv[1]);
+    } else if (strcmp(argv[0], "create-index") == 0) {
         return blob_create_index(argc - 1, argv + 1);
     } else if (strcmp(argv[0], "query-index") == 0) {
         return blob_query_index_cmd(argc - 1, argv + 1);
     } else if (strcmp(argv[0], "create-key") == 0) {
         return blob_create_key(argc - 1, argv + 1);
     }
-	return 0;
+    return 0;
 }

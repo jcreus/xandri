@@ -14,9 +14,8 @@ def import_df(name, df):
         ptr = df[var].index.values.__array_interface__['data'][0]
         if ptr not in indices:
             sz = df[var].index.values.dtype.itemsize
-            #if sz == 8: sz = 4
             tgt = {1: np.uint8, 2: np.uint16, 4: np.uint32, 8: np.uint64}[sz]
-            if typ == "int" and width == 8:
+            if sz == 8:
                 print("WARNING: JavaScript inexplicably doesn't have native 64-bit ints. ssiborg will emulate them and will therefore be slower")
             writer.add_index("index%d"%i, df[var].index.values.astype(tgt, copy=False), sz)
             indices[ptr] = i

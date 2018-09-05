@@ -83,8 +83,15 @@ void server_open_frame(char *name, frame_t *frame) {
 }
 
 void server_close_frame(frame_t *frame) {
-    // oof ouch my ram
-    // jk this is before closing process anyway
+    index_iter *iter = frame->index;
+    while (iter != 0) {
+        blob_close_index(&iter->data);
+        free(iter->name);
+        iter = iter->next;
+    }
+    for (int i=0; i<frame->nkeys; i++) {
+        free(frame->keys[i]);
+    }
 }
 
 

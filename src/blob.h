@@ -52,6 +52,7 @@ int blob_index_from_memory(char *name, char *key, void *mem, long num, int width
 int blob_cmd(int argc, char *argv[]);
 void blob_query_index(index_files_t *idx, unsigned long low, unsigned long high, long points, index_query_t *result);
 index_files_t *blob_open_index(char *name, char *key);
+void blob_close_index(index_files_t *index);
 
 int blob_key_from_file(char *name, char *key, char *path, char *type, int width, char *index_str);
 int blob_key_from_memory(char *name, char *key, void *mem, long num, char *type, int width, char *index_str);

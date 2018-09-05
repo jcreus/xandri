@@ -245,7 +245,6 @@ var Uint64Array = function(buf) {
 	for (var i=0; i<len; i++) {
 		out[i] = Long.fromBytesLE(arr.slice(8*i, 8*i+8));
 	}
-	console.log("hmm", out);
 	return out;
 }
 
@@ -354,7 +353,6 @@ function load_index(idx, ret) {
 			env.bytes += buf.byteLength;
 			var type = eval("Uint"+(8*env.indices[idx].width)+"Array");
 			var arr = new type(buf);
-			console.log("lol", arr);
 			var meta = JSON.parse(xhr.getResponseHeader('Xandri-Data'));
 			cache.indices[idx] = {data: arr, zoom: meta[0], low: meta[1], high: meta[2]};
 			var icache = cache.indices[idx];
@@ -576,7 +574,7 @@ function render_sidebar() {
 function render_frames(list) {
 	var str = '';//<option>Select</option>';
 	for (var i=0; i<env.frames.length; i++) {
-		str += '<option>'+env.frames[i]+'</option>';
+		str += '<option value="'+env.frames[i]+'">'+env.frames[i]+'</option>';
 	}
 	frames.innerHTML = str;
 }
@@ -910,7 +908,24 @@ function update_latency(lat) {
 
 function select(v) {
 	env.frame = v;
+	// Yikes, reset the state
+	cache.indices = {};
+	cache.keys = {};
+	cache.old = [];
+	env.plots = [];
+	env.selection = [0, -1];
+	env.points = 200;
+	env.axes = [{name: undefined, position: "left"}];
+	env.bounds = {};
+	env.nav = {cur: 0, history: [[0, -1]]};
+	flot.data = [];
+	flot.opts.xaxes = [{}];
+	flot.opts.yaxes = [{alignTicksWithAxis: 1}];
+	flot.plot = null;
+	$("#tooltip").hide();
+	$("#axis-highlight").hide();
 	var st = Date.now();
+	mkplot();
 	$.getJSON(BASE+'/keys/'+v, function (data, stat, xhr) {
 		update_latency(Date.now()-st);
 		env.bytes += xhr.responseText.length;
@@ -1109,6 +1124,9 @@ btnconfig.addEventListener("click", function (e) {
 	alert("lol");
 });
 
+frames.addEventListener("change", function () {
+	select(this.options[this.selectedIndex].value);
+});
 
 
 /*for (var i=0; i<60; i++) {

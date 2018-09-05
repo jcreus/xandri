@@ -1,5 +1,9 @@
 ingest/*.bin
+examples/*.bin
 ingest/*.gz
 *.o
+*.swp
+build/*
 x
 data/*
+__pycache__

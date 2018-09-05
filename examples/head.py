@@ -4,22 +4,22 @@ import pandas as pd
 import numpy as np
 import pickle
 
-if True:
+if not True:
     K = 20*5
-    df = pd.read_hdf('/home/joan/valbal/data/ssi71/ssi71.h5', stop=20*3600)
+    df = pd.read_hdf('/home/joan/valbal/data/actual63/ssi71.h5', stop=20*3600)
     fmt = open('/home/joan/balloons-VALBAL/src/AvionicsDownlink.cpp').read()
-    N = "ssi71"
+    N = "actual63"
 else:
     K = 5
     df = pd.read_hdf('/home/joan/valbal/data/ssi63/smol.h5')
-    fmt = open('/home/joan/63val/src/Avionics.cpp').read()
+    #fmt = open('/home/joan/63val/src/Avionics.cpp').read()
     N = "ssi63"
 
 v = df.index.values
 v = (v - v[0])//1000000
 v.astype(np.uint32).tofile('index.bin')
 
-cmds = './x blob create ssi71\n./x blob create-index ssi71 time -b 4 ingest/index.bin\n'
+cmds = './x blob create actual63\n./x blob create-index actual63 time -b 4 index.bin\n'
 for col in df:
     print(col, df[col].dtype)
     df[col].values.tofile(col+'.bin')
@@ -29,7 +29,7 @@ for col in df:
     if dt.endswith('16'): w = 2
     if dt.endswith('32'): w = 4
     if dt.endswith('64'): w = 8
-    cmds += './x blob create-key ssi71 %s time -t %s -b %d ingest/%s.bin\n' % (col, t, w, col)
+    cmds += './x blob create-key actual63 %s time -t %s -b %d %s.bin\n' % (col, t, w, col)
 
 open("cmds.sh", "w").write(cmds)
 

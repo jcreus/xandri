@@ -16,6 +16,8 @@ def import_df(name, df):
             sz = df[var].index.values.dtype.itemsize
             #if sz == 8: sz = 4
             tgt = {1: np.uint8, 2: np.uint16, 4: np.uint32, 8: np.uint64}[sz]
+            if typ == "int" and width == 8:
+                print("WARNING: JavaScript inexplicably doesn't have native 64-bit ints. ssiborg will emulate them and will therefore be slower")
             writer.add_index("index%d"%i, df[var].index.values.astype(tgt, copy=False), sz)
             indices[ptr] = i
             i += 1
@@ -32,6 +34,8 @@ def import_df(name, df):
         else:
             print('Unsupported type!', dtype)
             continue
+        if typ == "int" and width == 8:
+            print("WARNING: JavaScript inexplicably doesn't have native 64-bit ints. ssiborg will emulate them and will therefore be slower")
         print('adding', var)
         writer.add_key(var, idx, df[var].values, width, typ)
     print('Imported dataframe in %.2f ms, %d rows' % ((time.time()-t0)*1000, df.shape[0]))

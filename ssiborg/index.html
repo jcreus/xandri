@@ -1088,7 +1088,7 @@ window.addEventListener('resize', resize);
 var st = Date.now();
 $.getJSON(BASE+"/frames", function (fr) {
 	update_latency(Date.now()-st);
-	env.frames = fr;
+	env.frames = fr.sort();
 	render_frames();
 	select(fr[0]);
 });

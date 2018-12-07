@@ -10,6 +10,7 @@
 <script type="text/javascript" src="jquery.flot.crosshair.js"></script>
 <script type="text/javascript" src="jquery.flot.log.js"></script>
 <script type="text/javascript" src="jquery.flot.axislabels.js"></script>
+<script async type="text/javascript" src="http://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
 <style type="text/css">
 * {
 	font-family:monospace;
@@ -45,9 +46,11 @@ html, body {
 }
 .color-2 {
 	background:#455a64;
+	/*background:#FFFFFF*/
 }
 .color-3 {
 	background:#37474f;
+	/*background:#FFFFFF*/
 	color:white;
 }
 .color-4 {
@@ -126,7 +129,7 @@ ssiborg
 
 </div>
 
-<div style="display:flex; flex-direction: column;height:calc(100% - 3.5em);"> <!-- or row -->
+<div style="display:flex; flex-direction: column;height:calc(100% - 3.5em);" id="yeet"> <!-- or row -->
 <div style="flex:0;flex-grow:1;overflow:hidden;position:relative" id="plot-area">
 	<div id="plot-parent" style="text-align:center;">
 	<div id="axis-container" style="z-index:1"> </div>
@@ -199,12 +202,7 @@ Hailed as the new benchmark for shitty code
 		.axis-nav {
 			cursor:pointer;
 			padding:0;
-			min-height:1px; /* lol */
-		}
-		@media screen and (-webkit-min-device-pixel-ratio:0) { 
-			.axis-nav {
-				height:1px; /* bigger lol */
-			}
+			height:30px;/ /* lol */
 		}
 		.axis-nav span {
 			min-width:1.75em;
@@ -249,9 +247,7 @@ var Uint64Array = function(buf) {
 }
 
 var BASE = "http://localhost:2718";
-if (window.location.href.indexOf("ssi-server4") != -1) {
-	BASE = "http://ssi-server4.stanford.edu:443";
-}
+BASE = "http://"+window.location.hostname+":443";
 var sidebar = document.getElementById("sidebar");
 var frames = document.getElementById("frames");
 var filter = document.getElementById("filter");
@@ -640,6 +636,36 @@ function render_axes() {
 	td.className = "axis-nav axis-new-sec";
 	var span = document.createElement("span");
 	span.className = "axis-name";
+	span.innerHTML = "&#128247;";
+	span.addEventListener('click', function() {
+		var oldcolor = document.getElementById('plot').style.background;	
+		document.getElementById('plot').style.background = "white";
+		document.getElementsByClassName('axis')[0].style.display = "none";
+		var nax = document.getElementsByClassName('axis').length;
+		document.getElementsByClassName('axis')[nax-1].style.display = "none";
+		var arrows = document.getElementsByClassName('axis-opts');
+		for (var a=0; a<arrows.length; a++) arrows[a].style.display = "none";
+		var an = document.getElementsByClassName('axis-name');
+		for (var a=0; a<an.length; a++) { console.log(an[a], an[a].getAttribute('data-real')); if (an[a].hasAttribute('data-real')) an[a].innerHTML = an[a].getAttribute('data-real')}
+		html2canvas(document.getElementById('yeet')).then(function (canvas) {
+			document.getElementsByClassName('axis')[0].style.display = "inline-block";
+			document.getElementsByClassName('axis')[nax-1].style.display = "inline-block";
+			for (var a=0; a<arrows.length; a++) arrows[a].style.display = "inline";
+			document.getElementById('plot').style.background = oldcolor;
+			render_axes();
+			var a = document.createElement('a');
+			console.log(canvas);
+			a.href = canvas.toDataURL("image/jpeg").replace("image/jpeg", "image/octet-stream");
+			a.download = 'screenshot.jpg';
+			a.click();
+		})});
+	td.appendChild(span);
+	tr.appendChild(td);
+
+	var td = document.createElement("td");
+	td.className = "axis-nav axis-new-sec";
+	var span = document.createElement("span");
+	span.className = "axis-name";
 	span.innerHTML = "&larr;";
 	span.addEventListener('click', function () { go_nav(-1); });
 	td.appendChild(span);
@@ -700,6 +726,8 @@ function render_axes() {
 		var name = document.createElement("span");
 		name.className = "axis-name";
 		name.appendChild(document.createTextNode(""+(i+1)));
+		console.log("ax", ax);
+		name.setAttribute("data-real", ax.name ? ax.name : (""+(i+1)));
 		td.appendChild(name);
 		var opts = document.createElement("span");
 		opts.className = "axis-opts";
@@ -786,6 +814,7 @@ function render_axes() {
 				if (c == 13) {
 					env.axes[i].name = this.value.length == 0 ? undefined : this.value;
 					flot.opts.yaxes[i].axisLabel = env.axes[i].name;
+					render_axes();
 					mkplot();
 				}
 			}})(i));

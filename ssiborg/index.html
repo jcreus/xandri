@@ -1031,7 +1031,7 @@ function mkplot() {
 	    	if (item) {
 	    		flot.plot.highlight(item.seriesIndex,item.dataIndex);
 	    		var bg_color = item.series.color.replace(')', ', 0.20)').replace('rgb', 'rgba');
-	    		$("#tooltip").clone().appendTo("body").css({top: item.pageY+5, 
+	    		$("#tooltip").clone().appendTo("#yeet").css({top: item.pageY+5, 
 						left: item.pageX+5, 
 						"background-color":bg_color}).fadeIn(100);;
 	    	}
@@ -1088,7 +1088,7 @@ function resetPopup() {
 		display: "none",
 		border: "0px solid #fdd",
 		padding: "2px",
-	}).addClass("plot-tooltip").appendTo("body");
+	}).addClass("plot-tooltip").appendTo("#yeet");
 } 
 
 resetPopup();

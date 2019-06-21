@@ -353,6 +353,10 @@ int blob_key_from_memory(char *name, char *key, void *mem, long num, char *type,
 
     char meta_path[PATH_MAX]; get_subpath(name, meta_path, "keys", key, "meta");
     FILE *meta_file = fopen(meta_path, "wb");
+    if (meta_file == 0) {
+        printf("Unable to open binary file %s for writing!\n", meta_path);
+        return 1;
+    }
     write_to_file(meta_file, &value, sizeof(value));
     write_to_file(meta_file, index_str, strlen(index_str));
     fclose(meta_file);

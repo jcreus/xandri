@@ -39,4 +39,4 @@ It provides both a command line interface for managing dataframes and a simple C
  - I'm definitely forgetting stuff here.
 
 ## Python interface
-After getting it set up, run `make py`, and that should compile the Python library. You might need to have the usual python3-dev and what not installed. You should also put it in your `PYTHONPATH`: something like `export PYTHONPATH="/home/you/xandri/py_interface:$PYTHONPATH` in your `.bashrc`. Then you can see a preliminary demo of how to go about using it at either `py_interface/newdemo.py` or `py_interface/test.py`.
+After getting it set up, run `make py`, and that should compile the Python library. You might need to have the usual python3-dev and what not installed. You should also put it in your `PYTHONPATH`: something like `export PYTHONPATH="/home/you/xandri/py_interface:$PYTHONPATH"` in your `.bashrc`. Then you can see a preliminary demo of how to go about using it at either `py_interface/newdemo.py` or `py_interface/test.py`.

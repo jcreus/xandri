@@ -1,7 +1,7 @@
 TARGET = build/x
 LIBS = -lm -lz
 CC = gcc
-CFLAGS = -g -Werror -O2 -fno-strict-aliasing -Wall -D__DIR__=$(shell pwd)
+CFLAGS = -g -Werror -O2 -fno-strict-aliasing -Wall -D__DIR__=$(shell pwd) -fPIC
 
 .PHONY: default all clean
 

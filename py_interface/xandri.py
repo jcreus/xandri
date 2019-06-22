@@ -53,10 +53,11 @@ class ssiborg:
     def mkname(self):
         return ''.join([random.choice(string.ascii_lowercase) for _ in range(8)])
         
-    def __init__(self, name=None):
+    def __init__(self, name=None,erase_df=None):
         if name is None:
             name = self.mkname()
         self.name = name
+        self.erase_df = erase_df
         remove_df(self.name)
         self.writer = _xandri.Writer(self.name)
 
@@ -110,6 +111,8 @@ class ssiborg:
             os.system("screen -S %s -dm bash -c 'cd %s; build/x serve -p 2718'" % (name, PATH))
             print("Started screen '%s' with a Xandri server..." % name)
         webbrowser.open("http://localhost/ssiborg")
-        if input("Do you want to erase the resulting dataframe? [Y/n] ") in ["", "y", "Y"]:
+        if self.erase_df == None:
+            self.erase_df = input("Do you want to erase the resulting dataframe? [Y/n] ") in ["", "y", "Y"]
+        if self.erase_df:
             print("Removing...")
             remove_df(self.name)

@@ -6,6 +6,18 @@ The ultimate goal is a more fully fledged database system, but for now this is m
   <img src="docs/screenshot.png">
 </p>
 
+## Quick Start
+
+### Requirements
+You must have `screen` installed and an http server such as `apache2`. If using apache2, make sure the server is running with `sudo service apache2 start`
+
+### Installation
+After cloning, just run `make` from the top level. 
+
+### Python interface
+After getting it set up, run `make py`, and that should compile the Python library. You might need to have the usual python3-dev and what not installed. You should also put it in your `PYTHONPATH`: something like `export PYTHONPATH="/home/you/xandri/py_interface:$PYTHONPATH"` in your `.bashrc`. Then you can see a preliminary demo of how to go about using it at either `py_interface/newdemo.py` or `py_interface/test.py`.
+
+
 ## Client
 Focus on having a reasonable network and memory footprint with fast plots and working well with multiple axes.
  - Support for arbitrarily many axes, each with independent scaling, position, and label.
@@ -38,5 +50,4 @@ It provides both a command line interface for managing dataframes and a simple C
  - Reduce min/max.
  - I'm definitely forgetting stuff here.
 
-## Python interface
-After getting it set up, run `make py`, and that should compile the Python library. You might need to have the usual python3-dev and what not installed. You should also put it in your `PYTHONPATH`: something like `export PYTHONPATH="/home/you/xandri/py_interface:$PYTHONPATH"` in your `.bashrc`. Then you can see a preliminary demo of how to go about using it at either `py_interface/newdemo.py` or `py_interface/test.py`.
+

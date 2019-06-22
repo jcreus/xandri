@@ -1,9 +1,15 @@
+ingest/
 ingest/*.bin
 examples/*.bin
 ingest/*.gz
 *.o
 *.swp
+*.a
+*.csv
+*.so
 build/*
 x
 data/*
 __pycache__
+py_interface/Output/*
+py_interface/Output/
